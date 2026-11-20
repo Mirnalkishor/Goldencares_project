@@ -1,0 +1,90 @@
+{
+  "name": "CaregiverApplication",
+  "type": "object",
+  "properties": {
+    "full_name": {
+      "type": "string",
+      "title": "Full name"
+    },
+    "phone": {
+      "type": "string",
+      "title": "Phone number"
+    },
+    "email": {
+      "type": "string",
+      "title": "Email"
+    },
+    "city": {
+      "type": "string",
+      "title": "City",
+      "enum": [
+        "Chandigarh",
+        "Mohali",
+        "Panchkula"
+      ]
+    },
+    "experience": {
+      "type": "string",
+      "title": "Experience with seniors"
+    },
+    "languages": {
+      "type": "string",
+      "title": "Languages spoken"
+    },
+    "availability": {
+      "type": "string",
+      "title": "Availability"
+    },
+    "message": {
+      "type": "string",
+      "title": "About you"
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "new",
+        "reviewing",
+        "approved",
+        "declined"
+      ],
+      "enumColors": [
+        "blue",
+        "yellow",
+        "green",
+        "red"
+      ],
+      "default": "new"
+    }
+  },
+  "required": [
+    "full_name",
+    "phone",
+    "city"
+  ],
+  "rls": {
+    "create": {},
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

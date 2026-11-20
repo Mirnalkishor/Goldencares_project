@@ -1,0 +1,172 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 40 44% 96%;
+    --foreground: 194 36% 11%;
+    --card: 40 52% 99%;
+    --card-foreground: 194 36% 11%;
+    --popover: 40 52% 99%;
+    --popover-foreground: 194 36% 11%;
+    --primary: 182 66% 16%;
+    --primary-foreground: 40 50% 97%;
+    --secondary: 40 32% 90%;
+    --secondary-foreground: 182 66% 16%;
+    --muted: 40 26% 92%;
+    --muted-foreground: 196 12% 33%;
+    --accent: 32 74% 56%;
+    --accent-foreground: 194 44% 12%;
+    --destructive: 0 65% 42%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 40 20% 84%;
+    --input: 40 18% 80%;
+    --ring: 182 66% 24%;
+    --chart-1: 182 66% 16%;
+    --chart-2: 32 74% 56%;
+    --chart-3: 196 12% 33%;
+    --chart-4: 40 32% 78%;
+    --chart-5: 160 30% 36%;
+    --radius: 1.25rem;
+    --font-heading: "Fraunces", "Iowan Old Style", Georgia, serif;
+    --font-body: "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
+    --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    --sidebar-background: 40 44% 96%;
+    --sidebar-foreground: 194 36% 11%;
+    --sidebar-primary: 182 66% 16%;
+    --sidebar-primary-foreground: 40 50% 97%;
+    --sidebar-accent: 40 32% 90%;
+    --sidebar-accent-foreground: 194 36% 11%;
+    --sidebar-border: 40 20% 84%;
+    --sidebar-ring: 182 66% 24%;
+  }
+
+  .dark {
+    --background: 186 32% 8%;
+    --foreground: 40 40% 95%;
+    --card: 186 26% 11%;
+    --card-foreground: 40 40% 95%;
+    --popover: 186 26% 11%;
+    --popover-foreground: 40 40% 95%;
+    --primary: 32 74% 58%;
+    --primary-foreground: 186 50% 10%;
+    --secondary: 186 18% 17%;
+    --secondary-foreground: 40 40% 95%;
+    --muted: 186 18% 17%;
+    --muted-foreground: 40 14% 74%;
+    --accent: 32 74% 58%;
+    --accent-foreground: 186 50% 10%;
+    --destructive: 0 62% 46%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 186 16% 22%;
+    --input: 186 16% 22%;
+    --ring: 32 74% 58%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+    font-size: 17px;
+    line-height: 1.7;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-heading;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 1.08;
+  }
+
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+
+  ::selection {
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+  }
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-6xl px-5 sm:px-6 lg:px-8;
+  }
+
+  .eyebrow {
+    @apply text-[0.7rem] font-semibold uppercase text-muted-foreground;
+    letter-spacing: 0.24em;
+  }
+
+  .card-soft {
+    @apply rounded-[1.75rem] border border-border bg-card;
+  }
+
+  .field {
+    @apply mt-2 h-12 w-full rounded-xl border border-input bg-card px-4 text-[1rem] text-foreground transition-colors placeholder:text-muted-foreground/70 focus:border-primary/50 focus:outline-none focus:ring-4 focus:ring-primary/10;
+  }
+
+  .field-area {
+    @apply mt-2 w-full rounded-xl border border-input bg-card px-4 py-3 text-[1rem] text-foreground transition-colors placeholder:text-muted-foreground/70 focus:border-primary/50 focus:outline-none focus:ring-4 focus:ring-primary/10;
+  }
+
+  .label-strong {
+    @apply text-[0.85rem] font-semibold text-foreground;
+  }
+
+  .link-underline {
+    @apply underline decoration-accent decoration-2 underline-offset-4 transition-colors hover:text-primary;
+  }
+}
+
+@layer utilities {
+  .text-pretty {
+    text-wrap: pretty;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .hero-glow {
+    background-image: radial-gradient(
+        60% 55% at 82% 8%,
+        hsl(32 74% 56% / 0.16) 0%,
+        transparent 70%
+      ),
+      radial-gradient(50% 60% at 4% 90%, hsl(182 66% 16% / 0.1) 0%, transparent 72%);
+  }
+
+  .hairline {
+    background-image: linear-gradient(90deg, transparent, hsl(var(--border)), transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

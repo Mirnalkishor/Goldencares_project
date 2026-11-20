@@ -1,0 +1,55 @@
+{
+  "name": "PaymentAttempt",
+  "type": "object",
+  "properties": {
+    "booking_id": {
+      "type": "string",
+      "title": "Booking ID"
+    },
+    "txnid": {
+      "type": "string",
+      "title": "PayU transaction ID"
+    },
+    "amount_inr": {
+      "type": "number",
+      "title": "Amount (INR)"
+    },
+    "status": {
+      "type": "string",
+      "title": "Payment status",
+      "enum": ["pending", "success", "failed", "expired"],
+      "default": "pending"
+    },
+    "payu_id": {
+      "type": "string",
+      "title": "PayU payment ID"
+    },
+    "failure_reason": {
+      "type": "string",
+      "title": "Failure reason"
+    }
+  },
+  "required": ["booking_id", "txnid", "amount_inr", "status"],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

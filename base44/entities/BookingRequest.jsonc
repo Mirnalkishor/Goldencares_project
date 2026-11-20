@@ -1,0 +1,131 @@
+{
+  "name": "BookingRequest",
+  "type": "object",
+  "properties": {
+    "request_type": {
+      "type": "string",
+      "title": "Request type",
+      "enum": [
+        "visit",
+        "callback"
+      ],
+      "enumColors": [
+        "blue",
+        "purple"
+      ],
+      "default": "visit"
+    },
+    "full_name": {
+      "type": "string",
+      "title": "Full name"
+    },
+    "phone": {
+      "type": "string",
+      "title": "Phone number"
+    },
+    "email": {
+      "type": "string",
+      "title": "Email"
+    },
+    "relationship": {
+      "type": "string",
+      "title": "Relationship to the senior"
+    },
+    "service_name": {
+      "type": "string",
+      "title": "Service requested"
+    },
+    "duration_hours": {
+      "type": "number",
+      "title": "Duration (hours)"
+    },
+    "city": {
+      "type": "string",
+      "title": "City",
+      "enum": [
+        "Chandigarh",
+        "Mohali",
+        "Panchkula"
+      ]
+    },
+    "address": {
+      "type": "string",
+      "title": "Area / address"
+    },
+    "preferred_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Preferred date"
+    },
+    "preferred_time": {
+      "type": "string",
+      "title": "Preferred time"
+    },
+    "language_preference": {
+      "type": "string",
+      "title": "Language preference"
+    },
+    "preferred_contact": {
+      "type": "string",
+      "title": "Preferred contact method"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    },
+    "payment_token_hash": {
+      "type": "string",
+      "title": "Payment link verification"
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "new",
+        "contacted",
+        "scheduled",
+        "completed",
+        "cancelled"
+      ],
+      "enumColors": [
+        "blue",
+        "yellow",
+        "purple",
+        "green",
+        "gray"
+      ],
+      "default": "new"
+    }
+  },
+  "required": [
+    "full_name",
+    "phone",
+    "service_name",
+    "city"
+  ],
+  "rls": {
+    "create": {},
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

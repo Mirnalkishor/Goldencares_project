@@ -1,0 +1,3 @@
+PAYU_MERCHANT_KEY=your_test_merchant_key
+PAYU_MERCHANT_SALT=your_test_merchant_salt
+PAYU_ENV=test
