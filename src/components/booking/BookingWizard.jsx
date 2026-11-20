@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { serviceBySlug } from "@/lib/services";
+import { createPaymentToken, hashPaymentToken } from "@/lib/payu";
+import { CITIES } from "@/lib/site";
+import { isValidEmail, isValidPhoneNumber } from "@/lib/validation";
 import { ArrowLeft, ArrowRight, Loader2, Lock } from "lucide-react";
 import BookingProgress from "./BookingProgress";
 import BookingSummary from "./BookingSummary";
@@ -74,19 +77,36 @@ export default function BookingWizard({ initialService, initialDuration }) {
   }, [step, submitted]);
 
   const setField = (key, value) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
+    setForm((prev) => {
+      if (key !== "service_slug") return { ...prev, [key]: value };
+      const service = serviceBySlug(value);
+      return {
+        ...prev,
+        service_slug: value,
+        duration_hours: service?.durations.includes(Number(prev.duration_hours))
+          ? Number(prev.duration_hours)
+          : service?.durations[0] ?? prev.duration_hours,
+      };
+    });
     setError("");
   };
 
   function validate(index) {
-    if (index === 0 && !form.service_slug) return "Please choose a service to continue.";
-    if (index === 1 && !form.duration_hours) return "Please choose how long the visit should be.";
-    if (index === 2 && !form.city) return "Please choose a city so we can match someone nearby.";
+    if (index === 0 && !serviceBySlug(form.service_slug)) return "Please choose a service to continue.";
+    if (
+      index === 1 &&
+      !serviceBySlug(form.service_slug)?.durations.includes(Number(form.duration_hours))
+    ) {
+      return "Please choose an available duration for this service.";
+    }
+    if (index === 2 && !CITIES.includes(form.city)) return "Please choose a city so we can match someone nearby.";
     if (index === 4) {
       if (!form.full_name.trim()) return "Please add your name so we know who to speak with.";
-      if (!form.phone.trim()) return "Please add a phone number we can reach you on.";
-      if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-        return "That email looks incomplete — please check it, or leave it blank.";
+      if (!isValidPhoneNumber(form.phone)) {
+        return "Please enter a valid phone number.";
+      }
+      if (!isValidEmail(form.email)) {
+        return "Please enter a valid email address for your payment receipt.";
       }
     }
     return "";
@@ -117,7 +137,9 @@ export default function BookingWizard({ initialService, initialDuration }) {
     setError("");
     try {
       const service = serviceBySlug(form.service_slug);
-      await base44.entities.BookingRequest.create({
+      const paymentToken = createPaymentToken();
+      const paymentTokenHash = await hashPaymentToken(paymentToken);
+      const booking = await base44.entities.BookingRequest.create({
         request_type: "visit",
         service_name: service?.name || "Companion visit",
         duration_hours: Number(form.duration_hours),
@@ -132,10 +154,12 @@ export default function BookingWizard({ initialService, initialDuration }) {
         language_preference: form.language_preference,
         preferred_contact: form.preferred_contact,
         notes: form.notes,
+        payment_token_hash: paymentTokenHash,
         status: "new",
       });
+      if (!booking?.id) throw new Error("The booking was saved but no booking reference was returned.");
       setState("idle");
-      setSubmitted(true);
+      setSubmitted({ form, bookingId: booking.id, paymentToken });
     } catch (err) {
       setState("idle");
       setError(err?.message || "We could not send your request. Please try again, or email info@goldencares.in.");
@@ -153,7 +177,13 @@ export default function BookingWizard({ initialService, initialDuration }) {
     return (
       <div>
         <div ref={topRef} className="scroll-mt-28" />
-        <BookingConfirmed form={form} isAuthenticated={isAuthenticated} onReset={reset} />
+        <BookingConfirmed
+          form={submitted.form}
+          isAuthenticated={isAuthenticated}
+          bookingId={submitted.bookingId}
+          paymentToken={submitted.paymentToken}
+          onReset={reset}
+        />
       </div>
     );
   }

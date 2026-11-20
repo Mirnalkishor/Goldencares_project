@@ -5,15 +5,14 @@ import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/lib/AuthContext";
 import appCss from "@/index.css?url";
 
-const FAVICON =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%230e4442'/%3E%3Cpath d='M12.5 29.5V19.5a7.5 7.5 0 0 1 15 0v10' fill='none' stroke='%23f8f3e9' stroke-width='2.4' stroke-linecap='round'/%3E%3Ccircle cx='20' cy='20.5' r='3.1' fill='%23e39a45'/%3E%3C/svg%3E";
+const FAVICON = "/images/goldencares-emblem.png";
 
 export const Route = createRootRoute({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { name: "theme-color", content: "#0e4442" },
+      { name: "theme-color", content: "#443322" },
       { title: "GoldenCares | Senior Companion Care in Chandigarh, Mohali & Panchkula" },
       {
         name: "description",

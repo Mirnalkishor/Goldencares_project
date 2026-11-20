@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { CITIES } from "@/lib/site";
+import { isValidEmail, isValidPhoneNumber } from "@/lib/validation";
 import { ArrowRight, Check, Loader2 } from "lucide-react";
 
 const EXPERIENCE = ["Less than a year", "1–3 years", "3–5 years", "More than 5 years"];
@@ -23,8 +24,12 @@ export default function CaregiverForm() {
 
   async function handleSubmit(event) {
     event.preventDefault();
-    if (!form.full_name.trim() || !form.phone.trim() || !form.city) {
-      setError("Please add your name, a phone number and your city so we can reach you.");
+    if (!form.full_name.trim() || !isValidPhoneNumber(form.phone) || !CITIES.includes(form.city)) {
+      setError("Please add your name, a valid phone number and your city so we can reach you.");
+      return;
+    }
+    if (form.email && !isValidEmail(form.email)) {
+      setError("Please check your email address, or leave it blank.");
       return;
     }
     setError("");

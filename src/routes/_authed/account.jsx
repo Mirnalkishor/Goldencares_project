@@ -16,35 +16,56 @@ function AccountPage() {
   const { user } = Route.useRouteContext();
   const [bookings, setBookings] = useState(null);
   const [application, setApplication] = useState(null);
+  const [loadError, setLoadError] = useState("");
+  const [reload, setReload] = useState(0);
+  const [bookingCursor, setBookingCursor] = useState(null);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     let active = true;
-    base44.entities.BookingRequest.filter(
-      { created_by_id: user.id },
-      { sort: "-created_date", limit: 50 }
-    )
-      .then((page) => {
-        if (active) setBookings(page.items ?? []);
+    setLoadError("");
+    Promise.all([
+      base44.entities.BookingRequest.filter(
+        { created_by_id: user.id },
+        { sort: "-created_date", limit: 50 },
+      ),
+      base44.entities.CaregiverApplication.filter(
+        { created_by_id: user.id },
+        { sort: "-created_date", limit: 1 },
+      ),
+    ])
+      .then(([bookingPage, applicationPage]) => {
+        if (!active) return;
+        setBookings(bookingPage.items ?? []);
+        setBookingCursor(bookingPage.next_cursor ?? null);
+        setApplication(applicationPage.items?.[0] ?? null);
       })
-      .finally(() => {
-        if (active) setBookings((prev) => prev ?? []);
-      });
-
-    base44.entities.CaregiverApplication.filter(
-      { created_by_id: user.id },
-      { sort: "-created_date", limit: 1 }
-    )
-      .then((page) => {
-        if (active) setApplication(page.items?.[0] ?? null);
-      })
-      .finally(() => {
-        if (active) setApplication((prev) => prev ?? null);
+      .catch((error) => {
+        if (active) setLoadError(error?.message || "We could not load your requests. Please try again.");
       });
 
     return () => {
       active = false;
     };
-  }, [user.id]);
+  }, [user.id, reload]);
+
+  async function loadMoreBookings() {
+    if (!bookingCursor || loadingMore) return;
+    setLoadingMore(true);
+    setLoadError("");
+    try {
+      const page = await base44.entities.BookingRequest.filter(
+        { created_by_id: user.id },
+        { sort: "-created_date", limit: 50, cursor: bookingCursor },
+      );
+      setBookings((items) => [...(items ?? []), ...(page.items ?? [])]);
+      setBookingCursor(page.next_cursor ?? null);
+    } catch (error) {
+      setLoadError(error?.message || "We could not load older requests. Please try again.");
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   const firstName = (user.full_name || "").split(" ")[0] || "there";
 
@@ -81,7 +102,14 @@ function AccountPage() {
       <div className="mt-9">
         <h2 className="font-heading text-[1.5rem] text-foreground">Your requests</h2>
 
-        {bookings === null ? (
+        {loadError ? (
+          <div role="alert" className="mt-5 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-[0.9rem] text-destructive">
+            <p>{loadError}</p>
+            <button type="button" onClick={() => setReload((value) => value + 1)} className="mt-2 font-semibold underline">
+              Try again
+            </button>
+          </div>
+        ) : bookings === null ? (
           <div className="mt-5 space-y-3">
             {[0, 1].map((key) => (
               <div key={key} className="h-32 animate-pulse rounded-[1.5rem] border border-border bg-card" />
@@ -144,6 +172,16 @@ function AccountPage() {
             })}
           </ul>
         )}
+        {bookings?.length && bookingCursor && !loadError ? (
+          <button
+            type="button"
+            onClick={loadMoreBookings}
+            disabled={loadingMore}
+            className="mt-5 rounded-full border border-border px-5 py-2.5 text-[0.88rem] font-semibold text-foreground disabled:opacity-60"
+          >
+            {loadingMore ? "Loading…" : "Load older requests"}
+          </button>
+        ) : null}
       </div>
 
       {application ? (

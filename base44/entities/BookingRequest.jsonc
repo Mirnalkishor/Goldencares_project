@@ -104,7 +104,9 @@
     "city"
   ],
   "rls": {
-    "create": {},
+    "create": {
+      "status": "new"
+    },
     "read": {
       "$or": [
         {

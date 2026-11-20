@@ -26,19 +26,19 @@ const steps = [
     title: "You tell us what you need",
     text: "Five short steps online — service, hours, city and area, date and time, then how to reach you. If you would rather talk, write to us and we will call.",
     points: [
-      "No account needed to request care",
-      "Phone number required, email optional",
+      "Sign in or create an account before booking",
+      "Phone number and email required for booking",
       "Inline validation, so nothing is lost on submit",
     ],
   },
   {
     icon: ClipboardList,
     title: "We match, brief and confirm",
-    text: "We choose a verified companion for your parent's area, language and interests, brief them on the routine, and call you to confirm the details and charges.",
+    text: "We choose a verified companion for your parent's area, language and interests, brief them on the routine, and call you to confirm the details and timing.",
     points: [
       "Matched on locality, language and interests",
       "Briefed before the visit, never on the doorstep",
-      "You confirm the time and cost before anything is booked",
+      "You see the fixed quote before submitting the request",
     ],
   },
   {

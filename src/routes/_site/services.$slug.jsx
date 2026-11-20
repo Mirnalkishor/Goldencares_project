@@ -95,8 +95,8 @@ function ServiceDetailPage() {
                 </div>
 
                 <p className="mt-4 text-[0.82rem] leading-relaxed text-muted-foreground">
-                  Charges are confirmed with you on the phone before the visit. Nothing is charged on this
-                  website.
+                  The quote is ₹299 for one hour, ₹399 for two hours, or ₹599 for three hours. You can pay
+                  securely online after submitting your request.
                 </p>
               </div>
             </Reveal>
@@ -112,8 +112,8 @@ function ServiceDetailPage() {
             </h2>
             <ol className="mt-6 space-y-4">
               {[
-                "You book the service, hours and city — two minutes online, no account needed.",
-                `We call you to confirm the companion, the timing and the charges for ${CITIES.join(", ")}.`,
+                "After you sign in, book the service, hours and city in a few quick steps.",
+                `We call you to confirm the companion and timing for ${CITIES.join(", ")}.`,
                 "The companion arrives on time and stays for the hours you booked.",
                 "You get a short update afterwards, and the same companion next time where possible.",
               ].map((step, index) => (

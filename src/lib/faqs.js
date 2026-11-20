@@ -9,7 +9,7 @@ export const faqs = [
   },
   {
     q: "What does a visit cost?",
-    a: "Charges depend on the service and the number of hours you book. We tell you the exact amount on the phone before the visit — nothing is charged on this website, and nothing is booked without your agreement.",
+    a: "A one-hour visit is ₹299, two hours are ₹399, and three hours are ₹599. You see the quote before submitting a request and can pay securely online with PayU. A request is not a confirmed appointment until our team calls you.",
   },
   {
     q: "Can I cancel or reschedule?",

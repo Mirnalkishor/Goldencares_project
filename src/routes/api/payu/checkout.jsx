@@ -1,14 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { env } from "cloudflare:workers";
 import {
-  amountInPaise,
   createPayuRequestHash,
   getVisitPriceInr,
   hashPaymentToken,
 } from "@/lib/payu";
-
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PHONE_PATTERN = /^\+?[0-9\s()-]{8,20}$/;
+import { isValidEmail, isValidPhoneNumber } from "@/lib/validation";
+import { getEntityOrNull } from "@/lib/entity-errors";
 
 function errorResponse(message, status) {
   return Response.json({ error: message }, { status });
@@ -27,7 +25,16 @@ export const Route = createFileRoute("/api/payu/checkout")({
           return errorResponse("Expected a JSON request.", 415);
         }
 
-        const body = await request.json().catch(() => null);
+        const rawBody = await request.text();
+        if (new TextEncoder().encode(rawBody).byteLength > 4_096) {
+          return errorResponse("Payment request is too large.", 413);
+        }
+        let body;
+        try {
+          body = JSON.parse(rawBody);
+        } catch {
+          return errorResponse("Invalid payment request.", 400);
+        }
         if (
           !body ||
           typeof body.bookingId !== "string" ||
@@ -47,7 +54,7 @@ export const Route = createFileRoute("/api/payu/checkout")({
 
         const base44 = context.getBase44();
         const service = base44.asServiceRole.entities;
-        const booking = await service.BookingRequest.get(body.bookingId).catch(() => null);
+        const booking = await getEntityOrNull(service.BookingRequest, body.bookingId);
         if (!booking || booking.request_type !== "visit" || !booking.payment_token_hash) {
           return errorResponse("Booking not found or not eligible for payment.", 404);
         }
@@ -60,10 +67,11 @@ export const Route = createFileRoute("/api/payu/checkout")({
         const amountInr = getVisitPriceInr(booking.duration_hours);
         if (
           amountInr === null ||
+          !booking.full_name?.trim() ||
           !booking.email ||
-          !EMAIL_PATTERN.test(booking.email) ||
+          !isValidEmail(booking.email) ||
           !booking.phone ||
-          !PHONE_PATTERN.test(booking.phone)
+          !isValidPhoneNumber(booking.phone)
         ) {
           return errorResponse("The booking details are incomplete for online payment.", 400);
         }
@@ -98,6 +106,9 @@ export const Route = createFileRoute("/api/payu/checkout")({
         }
 
         const requestUrl = new URL(request.url);
+        if (mode === "live" && requestUrl.protocol !== "https:") {
+          return errorResponse("Live payments require a secure HTTPS site.", 503);
+        }
         const callbackUrl = new URL("/api/payu/response", requestUrl).toString();
         const params = {
           key,
@@ -115,6 +126,7 @@ export const Route = createFileRoute("/api/payu/checkout")({
 
         return Response.json({
           action: mode === "live" ? "https://secure.payu.in/_payment" : "https://test.payu.in/_payment",
+          attemptId: attempt.id,
           amountInr,
           fields: params,
         });

@@ -3,9 +3,45 @@ import { ArrowRight, Check, Clock, PhoneCall } from "lucide-react";
 import { formatDate, formatDuration } from "@/lib/format";
 import { serviceBySlug } from "@/lib/services";
 import { CONTACT } from "@/lib/site";
+import { getVisitPriceInr } from "@/lib/payu";
+import { useState } from "react";
 
-export default function BookingConfirmed({ form, isAuthenticated, onReset }) {
+export default function BookingConfirmed({ form, isAuthenticated, bookingId, paymentToken, onReset }) {
   const service = serviceBySlug(form.service_slug);
+  const [checkout, setCheckout] = useState(null);
+  const [paymentError, setPaymentError] = useState("");
+  const [paying, setPaying] = useState(false);
+  const amountInr = getVisitPriceInr(form.duration_hours);
+
+  async function beginPayment() {
+    setPaying(true);
+    setPaymentError("");
+    try {
+      const response = await fetch("/api/payu/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookingId, token: paymentToken }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "We could not start the payment.");
+      if (!["https://test.payu.in/_payment", "https://secure.payu.in/_payment"].includes(data.action)) {
+        throw new Error("The payment service returned an invalid checkout destination.");
+      }
+      setCheckout(data);
+      try {
+        sessionStorage.setItem(
+          `goldencares-payment-${data.attemptId}`,
+          JSON.stringify({ bookingId, token: paymentToken }),
+        );
+      } catch {
+        setPaymentError("Your browser cannot save a retry session. You can still continue to PayU.");
+      }
+    } catch (error) {
+      setPaymentError(error.message || "We could not start the payment.");
+    } finally {
+      setPaying(false);
+    }
+  }
 
   return (
     <div className="rounded-[2rem] border border-border bg-card p-6 sm:p-9">
@@ -16,12 +52,16 @@ export default function BookingConfirmed({ form, isAuthenticated, onReset }) {
         Thank you, {form.full_name.split(" ")[0]}.
       </h1>
       <p className="mt-3 max-w-lg text-[1rem] leading-relaxed text-muted-foreground">
-        Your request is with our team. We will call {form.phone} to confirm the companion, the time and the
-        charges — usually within a couple of hours during {CONTACT.hours.toLowerCase()}.
+        Your request is with our team. We will call {form.phone} to confirm the companion and time — usually
+        within a couple of hours during {CONTACT.hours.toLowerCase()}.
       </p>
 
       <div className="mt-6 rounded-[1.5rem] border border-border bg-background p-5">
         <dl className="space-y-3 text-[0.92rem]">
+          <div className="flex justify-between gap-4">
+            <dt className="text-muted-foreground">Quoted price</dt>
+            <dd className="text-right font-semibold text-foreground">₹{amountInr}</dd>
+          </div>
           <div className="flex justify-between gap-4">
             <dt className="text-muted-foreground">Service</dt>
             <dd className="text-right font-medium text-foreground">{service?.name || form.service_name}</dd>
@@ -51,9 +91,42 @@ export default function BookingConfirmed({ form, isAuthenticated, onReset }) {
         </dl>
       </div>
 
+      <div className="mt-6 rounded-xl border border-primary/20 bg-primary/5 p-4">
+        <p className="text-[0.9rem] font-semibold text-foreground">Pay securely with PayU</p>
+        <p className="mt-1 text-[0.82rem] leading-relaxed text-muted-foreground">
+          This request is not yet a confirmed visit. You can pay the quoted ₹{amountInr} now; our team will still
+          call to confirm availability and timing.
+        </p>
+        {paymentError ? (
+          <p role="alert" className="mt-3 text-[0.85rem] text-destructive">{paymentError}</p>
+        ) : null}
+        {checkout ? (
+          <form action={checkout.action} method="post" className="mt-4">
+            {Object.entries(checkout.fields).map(([name, value]) => (
+              <input key={name} type="hidden" name={name} value={value} />
+            ))}
+            <button
+              type="submit"
+              className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-[0.9rem] font-semibold text-primary-foreground"
+            >
+              Continue to PayU
+            </button>
+          </form>
+        ) : (
+          <button
+            type="button"
+            onClick={beginPayment}
+            disabled={paying}
+            className="mt-4 inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-[0.9rem] font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {paying ? "Preparing secure payment…" : `Pay ₹${amountInr} securely`}
+          </button>
+        )}
+      </div>
+
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
         {[
-          { icon: PhoneCall, title: "We call you", text: "To confirm the companion and the exact charges." },
+          { icon: PhoneCall, title: "We call you", text: "To confirm the companion and the visit details." },
           { icon: Clock, title: "The visit happens", text: "On time, for the hours you booked, as agreed." },
         ].map(({ icon: Icon, title, text }) => (
           <div key={title} className="rounded-xl border border-border p-4">

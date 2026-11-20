@@ -3,6 +3,7 @@ import { Clock, ShieldCheck } from "lucide-react";
 import { formatDate, formatDuration } from "@/lib/format";
 import { serviceBySlug } from "@/lib/services";
 import { CONTACT } from "@/lib/site";
+import { getVisitPriceInr } from "@/lib/payu";
 
 export default function BookingSummary({ form, steps, current, onJump }) {
   const service = serviceBySlug(form.service_slug);
@@ -10,6 +11,11 @@ export default function BookingSummary({ form, steps, current, onJump }) {
   const rows = [
     { label: "Service", value: service?.name || "Not chosen", step: 0 },
     { label: "Hours", value: formatDuration(form.duration_hours), step: 1 },
+    {
+      label: "Quote",
+      value: getVisitPriceInr(form.duration_hours) === null ? "Choose duration" : `₹${getVisitPriceInr(form.duration_hours)}`,
+      step: 1,
+    },
     {
       label: "City",
       value: form.city ? `${form.city}${form.address ? ` · ${form.address}` : ""}` : "Not chosen",
@@ -26,7 +32,7 @@ export default function BookingSummary({ form, steps, current, onJump }) {
   return (
     <aside className="rounded-[1.75rem] border border-border bg-card p-6 lg:sticky lg:top-32">
       <h2 className="font-heading text-[1.3rem] text-foreground">Your request</h2>
-      <p className="mt-1 text-[0.82rem] text-muted-foreground">Nothing is charged now.</p>
+      <p className="mt-1 text-[0.82rem] text-muted-foreground">Pay securely only if you choose to.</p>
 
       <dl className="mt-5 space-y-3">
         {rows.map((row) => (
@@ -53,7 +59,7 @@ export default function BookingSummary({ form, steps, current, onJump }) {
       <div className="mt-5 space-y-2.5 rounded-xl bg-secondary/60 p-4 text-[0.8rem] leading-relaxed text-foreground/75">
         <p className="flex items-start gap-2">
           <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
-          We call to confirm the companion, time and charges — usually within a couple of hours.
+          We call to confirm the companion and time — usually within a couple of hours.
         </p>
         <p className="flex items-start gap-2">
           <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />

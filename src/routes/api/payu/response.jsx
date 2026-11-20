@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { env } from "cloudflare:workers";
 import { amountInPaise, verifyPayuResponseHash } from "@/lib/payu";
+import { getEntityOrNull } from "@/lib/entity-errors";
 
 const callbackFields = [
   "key",
@@ -43,7 +44,10 @@ export const Route = createFileRoute("/api/payu/response")({
 
         const key = env.PAYU_MERCHANT_KEY;
         const salt = env.PAYU_MERCHANT_SALT;
-        if (!key || !salt || params.key !== key || !params.udf1) {
+        if (!key || !salt) {
+          return new Response("Payment verification is unavailable.", { status: 503 });
+        }
+        if (params.key !== key || !params.udf1 || params.udf1.length > 128 || params.txnid.length > 25) {
           return new Response("Payment verification failed.", { status: 400 });
         }
         if (!(await verifyPayuResponseHash(params, salt))) {
@@ -51,7 +55,7 @@ export const Route = createFileRoute("/api/payu/response")({
         }
 
         const service = context.getBase44().asServiceRole.entities;
-        const attempt = await service.PaymentAttempt.get(params.udf1).catch(() => null);
+        const attempt = await getEntityOrNull(service.PaymentAttempt, params.udf1);
         if (
           !attempt ||
           attempt.txnid !== params.txnid ||
@@ -67,6 +71,17 @@ export const Route = createFileRoute("/api/payu/response")({
             payu_id: params.mihpayid.slice(0, 64),
             failure_reason: params.status === "success" ? "" : params.error_Message.slice(0, 200),
           });
+          if (params.status === "success") {
+            const otherAttempts = await service.PaymentAttempt.filter(
+              { booking_id: attempt.booking_id, status: "pending" },
+              { limit: 100 },
+            );
+            await Promise.all(
+              otherAttempts.items
+                .filter((other) => other.id !== attempt.id)
+                .map((other) => service.PaymentAttempt.update(other.id, { status: "expired" })),
+            );
+          }
         }
 
         const resultUrl = new URL("/payment-result", request.url);

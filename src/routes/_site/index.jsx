@@ -5,7 +5,6 @@ import Steps from "@/components/home/Steps";
 import ServicesGrid from "@/components/home/ServicesGrid";
 import TrustSafety from "@/components/home/TrustSafety";
 import FaqTeaser from "@/components/home/FaqTeaser";
-import Testimonials from "@/components/home/Testimonials";
 import CtaSection from "@/components/site/CtaSection";
 import { CITIES, CONTACT, DISCLAIMER } from "@/lib/site";
 
@@ -62,7 +61,6 @@ function HomePage() {
       <Steps />
       <ServicesGrid />
       <TrustSafety />
-      <Testimonials />
       <FaqTeaser />
       <CtaSection className="py-16 lg:py-24" />
     </>

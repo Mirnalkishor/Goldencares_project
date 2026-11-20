@@ -15,8 +15,8 @@ export default function StepContact({ form, setField }) {
         How do we reach you?
       </h2>
       <p className="mt-2 text-[0.95rem] text-muted-foreground">
-        A phone number is all we need. Email is optional, and nothing is shared with anyone outside our
-        team and the assigned companion.
+        We use your phone to confirm the visit and your email for the payment receipt. Your details are shared
+        with PayU only if you choose to pay online.
       </p>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
@@ -41,11 +41,12 @@ export default function StepContact({ form, setField }) {
             className="field"
             autoComplete="tel"
             placeholder="We will call this number"
+            required
           />
         </div>
         <div>
           <label htmlFor="email" className="label-strong">
-            Email <span className="font-normal text-muted-foreground">(optional)</span>
+            Email
           </label>
           <input
             id="email"
@@ -55,6 +56,7 @@ export default function StepContact({ form, setField }) {
             className="field"
             autoComplete="email"
             placeholder="you@example.com"
+            required
           />
         </div>
         <div>

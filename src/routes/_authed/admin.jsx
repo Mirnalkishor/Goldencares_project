@@ -23,26 +23,51 @@ const FILTERS = [
   { key: "cancelled", label: "Cancelled" },
 ];
 
+function paymentForBooking(payments, bookingId) {
+  return payments.find((item) => item.booking_id === bookingId && item.status === "success")
+    || payments.find((item) => item.booking_id === bookingId);
+}
+
 function AdminPage() {
   const { user } = Route.useRouteContext();
   const [tab, setTab] = useState("bookings");
   const [filter, setFilter] = useState("all");
   const [bookings, setBookings] = useState(null);
   const [applications, setApplications] = useState(null);
+  const [payments, setPayments] = useState([]);
+  const [loadError, setLoadError] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [reload, setReload] = useState(0);
+  const [cursors, setCursors] = useState({});
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     if (user.role !== "admin") return;
     let active = true;
-    base44.entities.BookingRequest.filter({}, { sort: "-created_date", limit: 100 }).then((page) => {
-      if (active) setBookings(page.items ?? []);
-    });
-    base44.entities.CaregiverApplication.filter({}, { sort: "-created_date", limit: 100 }).then((page) => {
-      if (active) setApplications(page.items ?? []);
-    });
+    setLoadError("");
+    Promise.all([
+      base44.entities.BookingRequest.filter({}, { sort: "-created_date", limit: 100 }),
+      base44.entities.CaregiverApplication.filter({}, { sort: "-created_date", limit: 100 }),
+      base44.entities.PaymentAttempt.filter({}, { sort: "-created_date", limit: 100 }),
+    ])
+      .then(([bookingPage, applicationPage, paymentPage]) => {
+        if (!active) return;
+        setBookings(bookingPage.items ?? []);
+        setApplications(applicationPage.items ?? []);
+        setPayments(paymentPage.items ?? []);
+        setCursors({
+          bookings: bookingPage.next_cursor ?? null,
+          applications: applicationPage.next_cursor ?? null,
+          payments: paymentPage.next_cursor ?? null,
+        });
+      })
+      .catch((error) => {
+        if (active) setLoadError(error?.message || "We could not load the team data. Please try again.");
+      });
     return () => {
       active = false;
     };
-  }, [user.role]);
+  }, [user.role, reload]);
 
   if (user.role !== "admin") {
     return (
@@ -59,13 +84,50 @@ function AdminPage() {
   }
 
   async function updateBooking(id, status) {
-    setBookings((prev) => prev.map((item) => (item.id === id ? { ...item, status } : item)));
-    await base44.entities.BookingRequest.update(id, { status });
+    const previous = bookings;
+    setActionError("");
+    setBookings((items) => items.map((item) => (item.id === id ? { ...item, status } : item)));
+    try {
+      await base44.entities.BookingRequest.update(id, { status });
+    } catch (error) {
+      setBookings(previous);
+      setActionError(error?.message || "We could not update that booking status.");
+    }
   }
 
   async function updateApplication(id, status) {
-    setApplications((prev) => prev.map((item) => (item.id === id ? { ...item, status } : item)));
-    await base44.entities.CaregiverApplication.update(id, { status });
+    const previous = applications;
+    setActionError("");
+    setApplications((items) => items.map((item) => (item.id === id ? { ...item, status } : item)));
+    try {
+      await base44.entities.CaregiverApplication.update(id, { status });
+    } catch (error) {
+      setApplications(previous);
+      setActionError(error?.message || "We could not update that application status.");
+    }
+  }
+
+  async function loadMore(list) {
+    if (!cursors[list] || loadingMore) return;
+    setLoadingMore(true);
+    setLoadError("");
+    try {
+      const page = await base44.entities[
+        list === "bookings" ? "BookingRequest" : list === "applications" ? "CaregiverApplication" : "PaymentAttempt"
+      ].filter({}, {
+        sort: "-created_date",
+        limit: 100,
+        cursor: cursors[list],
+      });
+      if (list === "bookings") setBookings((items) => [...(items ?? []), ...(page.items ?? [])]);
+      if (list === "applications") setApplications((items) => [...(items ?? []), ...(page.items ?? [])]);
+      if (list === "payments") setPayments((items) => [...items, ...(page.items ?? [])]);
+      setCursors((current) => ({ ...current, [list]: page.next_cursor ?? null }));
+    } catch (error) {
+      setLoadError(error?.message || "We could not load older records. Please try again.");
+    } finally {
+      setLoadingMore(false);
+    }
   }
 
   const visibleBookings = (bookings ?? []).filter((item) => filter === "all" || item.status === filter);
@@ -82,6 +144,20 @@ function AdminPage() {
         New bookings appear here as soon as a family submits them. Change a status and the family sees it in
         their portal.
       </p>
+
+      {loadError ? (
+        <div role="alert" className="mt-5 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-[0.9rem] text-destructive">
+          <p>{loadError}</p>
+          <button type="button" onClick={() => setReload((value) => value + 1)} className="mt-2 font-semibold underline">
+            Try again
+          </button>
+        </div>
+      ) : null}
+      {actionError ? (
+        <p role="alert" className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-[0.9rem] text-destructive">
+          {actionError}
+        </p>
+      ) : null}
 
       <div className="mt-7 flex flex-wrap gap-2">
         <button
@@ -104,7 +180,7 @@ function AdminPage() {
         </button>
       </div>
 
-      {tab === "bookings" ? (
+      {loadError ? null : tab === "bookings" ? (
         <>
           <div className="mt-5 flex flex-wrap gap-2">
             {FILTERS.map((item) => (
@@ -166,6 +242,12 @@ function AdminPage() {
                   </div>
 
                   <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 border-t border-border pt-3 text-[0.82rem] text-muted-foreground">
+                    {booking.request_type === "visit" && paymentForBooking(payments, booking.id) ? (
+                      <span>
+                        Payment: {paymentForBooking(payments, booking.id).status} · ₹
+                        {paymentForBooking(payments, booking.id).amount_inr}
+                      </span>
+                    ) : null}
                     {booking.request_type === "callback" ? null : (
                       <>
                         <span className="inline-flex items-center gap-1.5">
@@ -207,8 +289,28 @@ function AdminPage() {
               ))}
             </ul>
           )}
+          {bookings?.length && cursors.bookings ? (
+            <button
+              type="button"
+              onClick={() => loadMore("bookings")}
+              disabled={loadingMore}
+              className="mt-5 rounded-full border border-border px-5 py-2.5 text-[0.88rem] font-semibold text-foreground disabled:opacity-60"
+            >
+              {loadingMore ? "Loading…" : "Load older bookings"}
+            </button>
+          ) : null}
+          {cursors.payments ? (
+            <button
+              type="button"
+              onClick={() => loadMore("payments")}
+              disabled={loadingMore}
+              className="ml-3 mt-5 rounded-full border border-border px-5 py-2.5 text-[0.88rem] font-semibold text-foreground disabled:opacity-60"
+            >
+              {loadingMore ? "Loading…" : "Load older payment records"}
+            </button>
+          ) : null}
         </>
-      ) : applications === null ? (
+      ) : loadError ? null : applications === null ? (
         <div className="mt-5 space-y-3">
           {[0, 1].map((key) => (
             <div key={key} className="h-32 animate-pulse rounded-[1.5rem] border border-border bg-card" />
@@ -266,6 +368,16 @@ function AdminPage() {
           ))}
         </ul>
       )}
+      {!loadError && tab === "applications" && applications?.length && cursors.applications ? (
+        <button
+          type="button"
+          onClick={() => loadMore("applications")}
+          disabled={loadingMore}
+          className="mt-5 rounded-full border border-border px-5 py-2.5 text-[0.88rem] font-semibold text-foreground disabled:opacity-60"
+        >
+          {loadingMore ? "Loading…" : "Load older applications"}
+        </button>
+      ) : null}
     </section>
   );
 }

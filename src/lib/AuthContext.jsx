@@ -2,6 +2,7 @@ import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createContext, useContext, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { currentUrl } from "@/lib/authReturnTo";
+import { DEMO_USER, DEV_AUTH_STORAGE_KEY, isDevelopmentSession } from "@/lib/devAuth";
 
 /**
  * The visitor, resolved once per page load and cached in the router's QueryClient:
@@ -14,6 +15,7 @@ import { currentUrl } from "@/lib/authReturnTo";
 export const authQuery = queryOptions({
   queryKey: ["auth", "me"],
   queryFn: async () => {
+    if (isDevelopmentSession()) return { user: DEMO_USER, error: null };
     // No token means no session; /me could only answer 401.
     if (!base44.auth.hasToken()) return { user: null, error: null };
     try {
@@ -50,6 +52,11 @@ export function AuthProvider({ children }) {
       refresh: () => queryClient.fetchQuery({ ...authQuery, staleTime: 0 }),
       logout: () => {
         queryClient.setQueryData(authQuery.queryKey, { user: null, error: null });
+        if (isDevelopmentSession()) {
+          window.localStorage.removeItem(DEV_AUTH_STORAGE_KEY);
+          window.location.assign("/login");
+          return;
+        }
         base44.auth.logout(window.location.origin);
       },
       // Full-page sign-in: /login with the current page as the way back. A hard
@@ -68,4 +75,3 @@ export function useAuth() {
   if (!ctx) throw new Error("useAuth must be used within <AuthProvider>");
   return ctx;
 }
-

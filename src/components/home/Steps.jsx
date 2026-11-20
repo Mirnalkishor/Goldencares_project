@@ -6,13 +6,13 @@ const steps = [
   {
     icon: PhoneCall,
     title: "Tell us what you need",
-    text: "Two minutes, five short steps: the service, the hours, your city, and how to reach you. No account needed, no long forms.",
+    text: "Sign in or create an account, then book in five short steps: service, hours, city, and how to reach you.",
     meta: "Takes about 2 minutes",
   },
   {
     icon: HeartHandshake,
     title: "We match and confirm",
-    text: "We pick a verified companion who suits your parent's area, language and interests, then call you to confirm the time and charges.",
+    text: "We pick a verified companion who suits your parent's area, language and interests, then call you to confirm the time.",
     meta: "Usually within a couple of hours",
   },
   {

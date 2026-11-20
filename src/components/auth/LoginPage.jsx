@@ -8,6 +8,7 @@ import { MfaFlow } from "@/components/auth/MfaFlow";
 import { MfaScreen } from "@/components/auth/MfaParts";
 import { loginWithMfa } from "@/lib/authMfa";
 import { safeReturnTo } from "@/lib/authReturnTo";
+import { DEMO_LOGIN, startDemoSession } from "@/lib/devAuth";
 
 // The /login page. ?returnTo= (or the platform's ?from_url=) is where the visitor
 // goes after signing in — the login gate and the MCP consent page send people here with it.
@@ -24,6 +25,11 @@ export function LoginPage() {
     setError("");
     setBusy(true);
     try {
+      if (startDemoSession(email, password)) {
+        window.location.href = returnTo;
+        return;
+      }
+
       const result = await loginWithMfa(email, password);
       if (result.mfa_required) {
         setMfaChallenge(result);
@@ -75,6 +81,18 @@ export function LoginPage() {
           Create one
         </AuthLink>
       </p>
+      {import.meta.env.DEV ? (
+        <div className="mt-6 border-t border-border pt-5">
+          <p className="text-center text-xs text-muted-foreground">
+            Local demo login: <span className="font-semibold text-foreground">{DEMO_LOGIN.email}</span>
+            {" / "}
+            <span className="font-semibold text-foreground">{DEMO_LOGIN.password}</span>
+          </p>
+          <p className="mt-1 text-center text-xs text-muted-foreground">
+            Enter these in the form and select Log in. This is only available in development and does not create a real backend session.
+          </p>
+        </div>
+      ) : null}
     </AuthLayout>
   );
 }

@@ -1,10 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, Clock, ShieldCheck } from "lucide-react";
 import BookingWizard from "@/components/booking/BookingWizard";
+import { AuthGateError, requireSignedIn } from "@/components/auth/AuthGate";
 import { DisclaimerBand } from "@/components/site/Disclaimer";
 import { CONTACT } from "@/lib/site";
 
 export const Route = createFileRoute("/_site/book")({
+  ssr: false,
+  beforeLoad: requireSignedIn,
+  errorComponent: AuthGateError,
   validateSearch: (search) => {
     const next = {};
     if (typeof search.service === "string" && search.service) next.service = search.service;
@@ -42,8 +46,8 @@ function BookPage() {
             Book care in three minutes.
           </h1>
           <p className="mt-3 max-w-xl text-[1rem] leading-relaxed text-muted-foreground">
-            Five short steps. No account needed, no payment now — we confirm everything with you by phone
-            first.
+            Sign in or create an account to request care in five short steps. The clear quote is ₹299 for one
+            hour, ₹399 for two, or ₹599 for three; pay securely with PayU if you choose.
           </p>
           <div className="mt-5 flex flex-wrap gap-4 text-[0.82rem] text-muted-foreground">
             <span className="inline-flex items-center gap-2">

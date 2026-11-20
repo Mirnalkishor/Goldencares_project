@@ -5,64 +5,64 @@
 @layer base {
   :root {
     --background: 40 44% 96%;
-    --foreground: 194 36% 11%;
+    --foreground: 28 25% 14%;
     --card: 40 52% 99%;
-    --card-foreground: 194 36% 11%;
+    --card-foreground: 28 25% 14%;
     --popover: 40 52% 99%;
-    --popover-foreground: 194 36% 11%;
-    --primary: 182 66% 16%;
+    --popover-foreground: 28 25% 14%;
+    --primary: 28 34% 20%;
     --primary-foreground: 40 50% 97%;
     --secondary: 40 32% 90%;
-    --secondary-foreground: 182 66% 16%;
-    --muted: 40 26% 92%;
-    --muted-foreground: 196 12% 33%;
-    --accent: 32 74% 56%;
-    --accent-foreground: 194 44% 12%;
+    --secondary-foreground: 28 34% 20%;
+    --muted: 38 24% 92%;
+    --muted-foreground: 28 12% 34%;
+    --accent: 34 72% 34%;
+    --accent-foreground: 28 35% 12%;
     --destructive: 0 65% 42%;
     --destructive-foreground: 0 0% 100%;
-    --border: 40 20% 84%;
-    --input: 40 18% 80%;
-    --ring: 182 66% 24%;
-    --chart-1: 182 66% 16%;
-    --chart-2: 32 74% 56%;
-    --chart-3: 196 12% 33%;
+    --border: 36 20% 84%;
+    --input: 36 18% 80%;
+    --ring: 28 34% 30%;
+    --chart-1: 28 34% 20%;
+    --chart-2: 34 72% 44%;
+    --chart-3: 28 12% 34%;
     --chart-4: 40 32% 78%;
-    --chart-5: 160 30% 36%;
+    --chart-5: 18 42% 48%;
     --radius: 1.25rem;
     --font-heading: "Fraunces", "Iowan Old Style", Georgia, serif;
     --font-body: "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
     --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     --sidebar-background: 40 44% 96%;
-    --sidebar-foreground: 194 36% 11%;
-    --sidebar-primary: 182 66% 16%;
+    --sidebar-foreground: 28 25% 14%;
+    --sidebar-primary: 28 34% 20%;
     --sidebar-primary-foreground: 40 50% 97%;
     --sidebar-accent: 40 32% 90%;
-    --sidebar-accent-foreground: 194 36% 11%;
-    --sidebar-border: 40 20% 84%;
-    --sidebar-ring: 182 66% 24%;
+    --sidebar-accent-foreground: 28 25% 14%;
+    --sidebar-border: 36 20% 84%;
+    --sidebar-ring: 28 34% 30%;
   }
 
   .dark {
-    --background: 186 32% 8%;
+    --background: 28 22% 8%;
     --foreground: 40 40% 95%;
-    --card: 186 26% 11%;
+    --card: 28 20% 11%;
     --card-foreground: 40 40% 95%;
-    --popover: 186 26% 11%;
+    --popover: 28 20% 11%;
     --popover-foreground: 40 40% 95%;
-    --primary: 32 74% 58%;
-    --primary-foreground: 186 50% 10%;
-    --secondary: 186 18% 17%;
+    --primary: 36 76% 58%;
+    --primary-foreground: 28 30% 12%;
+    --secondary: 28 18% 17%;
     --secondary-foreground: 40 40% 95%;
-    --muted: 186 18% 17%;
-    --muted-foreground: 40 14% 74%;
-    --accent: 32 74% 58%;
-    --accent-foreground: 186 50% 10%;
+    --muted: 28 18% 17%;
+    --muted-foreground: 38 14% 74%;
+    --accent: 36 76% 58%;
+    --accent-foreground: 28 30% 12%;
     --destructive: 0 62% 46%;
     --destructive-foreground: 0 0% 100%;
-    --border: 186 16% 22%;
-    --input: 186 16% 22%;
-    --ring: 32 74% 58%;
+    --border: 28 16% 22%;
+    --input: 28 16% 22%;
+    --ring: 36 76% 58%;
   }
 }
 
@@ -147,10 +147,10 @@
   .hero-glow {
     background-image: radial-gradient(
         60% 55% at 82% 8%,
-        hsl(32 74% 56% / 0.16) 0%,
+        hsl(34 72% 44% / 0.16) 0%,
         transparent 70%
       ),
-      radial-gradient(50% 60% at 4% 90%, hsl(182 66% 16% / 0.1) 0%, transparent 72%);
+      radial-gradient(50% 60% at 4% 90%, hsl(28 34% 20% / 0.08) 0%, transparent 72%);
   }
 
   .hairline {

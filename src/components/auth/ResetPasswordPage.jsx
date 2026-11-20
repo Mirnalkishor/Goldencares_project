@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { AlertTriangle, Lock } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { AuthError, SubmitButton } from "@/components/auth/parts";
@@ -11,6 +11,9 @@ import { Label } from "@/components/ui/label";
 export function ResetPasswordPage() {
   // Read raw: the router's search parser would turn an all-digit token into a number.
   const token = new URLSearchParams(window.location.search).get("token");
+  useEffect(() => {
+    window.history.replaceState(null, "", window.location.pathname);
+  }, []);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");

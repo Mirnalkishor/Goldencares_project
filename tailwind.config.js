@@ -71,8 +71,8 @@ export default {
   			mono: ['var(--font-mono)']
   		},
   		boxShadow: {
-  			soft: '0 30px 70px -40px rgba(11, 58, 58, 0.45)',
-  			lifted: '0 18px 40px -24px rgba(11, 58, 58, 0.35)'
+            soft: '0 30px 70px -40px rgba(68, 45, 24, 0.25)',
+            lifted: '0 18px 40px -24px rgba(68, 45, 24, 0.18)'
   		},
   		keyframes: {
   			'accordion-down': {
@@ -100,4 +100,3 @@ export default {
   },
   plugins: [animate],
 }
-

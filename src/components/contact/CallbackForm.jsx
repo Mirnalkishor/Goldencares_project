@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { CITIES } from "@/lib/site";
+import { isValidPhoneNumber } from "@/lib/validation";
 import { ArrowRight, Check, Loader2 } from "lucide-react";
 
 const SLOTS = ["Any time", "Morning (8–11 am)", "Afternoon (12–4 pm)", "Evening (4–8 pm)"];
@@ -14,8 +15,8 @@ export default function CallbackForm() {
 
   async function handleSubmit(event) {
     event.preventDefault();
-    if (!form.full_name.trim() || !form.phone.trim() || !form.city) {
-      setError("Please add your name, a phone number and your city so we can call you back.");
+    if (!form.full_name.trim() || !isValidPhoneNumber(form.phone) || !CITIES.includes(form.city)) {
+      setError("Please add your name, a valid phone number and your city so we can call you back.");
       return;
     }
     setError("");
