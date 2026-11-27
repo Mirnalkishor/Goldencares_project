@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import {
   bookingDateValue,
+  bookingServiceName,
   bookingTime,
   formatBookingDate,
   paiseToInr,
@@ -45,6 +46,12 @@ function inFilter(booking, filter) {
 export default function BookingsTab({ bookings, onChanged }) {
   const [filter, setFilter] = useState("upcoming");
   const [selected, setSelected] = useState(null);
+
+  useEffect(() => {
+    if (!selected) return;
+    const fresh = (bookings || []).find((booking) => booking.id === selected.id);
+    if (fresh && fresh !== selected) setSelected(fresh);
+  }, [bookings, selected]);
 
   const visible = (bookings || []).filter((booking) => inFilter(booking, filter));
 
@@ -92,7 +99,7 @@ export default function BookingsTab({ bookings, onChanged }) {
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-heading text-[1.25rem] text-foreground">
-                      {booking.serviceName || "Companion visit"}
+                      {bookingServiceName(booking)}
                     </h3>
                     {booking.displayId ? (
                       <span className="text-[0.75rem] font-medium text-muted-foreground">{booking.displayId}</span>
@@ -166,7 +173,7 @@ function BookingDetailDialog({ booking, onClose, onChanged }) {
 
   if (!booking) return null;
 
-  const canStart = ["confirmed", "upcoming"].includes(booking.status);
+  const canStart = ["new", "confirmed", "upcoming"].includes(booking.status);
   const canComplete = ["in_progress", "completion_requested"].includes(booking.status);
 
   async function verify(kind) {
@@ -191,7 +198,7 @@ function BookingDetailDialog({ booking, onClose, onChanged }) {
         <DialogHeader>
           <div className="flex flex-wrap items-center gap-3">
             <DialogTitle className="font-heading text-[1.4rem]">
-              {booking.serviceName || "Companion visit"}
+              {bookingServiceName(booking)}
             </DialogTitle>
             <StatusPill status={booking.status} />
           </div>

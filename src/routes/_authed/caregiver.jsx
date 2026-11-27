@@ -24,6 +24,7 @@ import EarningsTab from "@/components/caregiver/EarningsTab";
 import ProfileTab from "@/components/caregiver/ProfileTab";
 import {
   bookingDateValue,
+  bookingServiceName,
   bookingTime,
   formatBookingDate,
   formatLedgerDate,
@@ -145,6 +146,25 @@ function CaregiverPage() {
       active = false;
     };
   }, [user.id, user.role, isCaregiver, reload]);
+
+  // Families generate arrival/completion codes from their panel. Refresh the
+  // assigned list while Bookings is open so the right OTP field appears.
+  useEffect(() => {
+    if (!isCaregiver || tab !== "bookings") return undefined;
+    const refresh = async () => {
+      try {
+        setBookings(await loadAssignedBookings(user.id));
+      } catch {
+        // Keep the last good list; the main loader will retry on reload.
+      }
+    };
+    const timer = window.setInterval(refresh, 15000);
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [isCaregiver, tab, user.id]);
 
   const upcoming = useMemo(
     () => (bookings || []).filter((booking) => UPCOMING_BOOKING_STATUSES.has(booking.status)),
@@ -392,7 +412,7 @@ function DashboardTab({
         ) : nextVisit ? (
           <div className="mt-4 rounded-2xl bg-secondary/50 p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="font-heading text-[1.1rem] text-foreground">{nextVisit.serviceName || "Companion visit"}</h3>
+              <h3 className="font-heading text-[1.1rem] text-foreground">{bookingServiceName(nextVisit)}</h3>
               <StatusPill status={nextVisit.status} />
             </div>
             <p className="mt-2 text-[0.86rem] text-muted-foreground">

@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { sendEmailVerification } from "firebase/auth";
 import {
   ArrowRight,
@@ -17,6 +17,7 @@ import {
 import { base44 } from "@/api/base44Client";
 import { auth as getAuthClient } from "@/api/firebaseClient";
 import StatusPill from "@/components/site/StatusPill";
+import BookingJourneyPanel from "@/components/booking/BookingJourneyPanel";
 import { formatDate, formatDuration } from "@/lib/format";
 
 export const Route = createFileRoute("/_authed/account")({
@@ -65,6 +66,15 @@ function AccountPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [verificationNotice, setVerificationNotice] = useState("");
 
+  const refreshBookings = useCallback(async () => {
+    const page = await base44.entities.BookingRequest.filter(
+      { userId: user.id },
+      { sort: "-createdAt", limit: 50 },
+    );
+    setBookings(page.items ?? []);
+    setBookingCursor(page.next_cursor ?? null);
+  }, [user.id]);
+
   useEffect(() => {
     if (isCaregiverRoute) {
       navigate({ to: "/caregiver", replace: true });
@@ -103,6 +113,22 @@ function AccountPage() {
       active = false;
     };
   }, [user.id, user.email, reload, isCaregiverRoute, navigate]);
+
+  // OTP status changes happen in the caregiver panel. Keep the family's booking
+  // list current while it is open so the review screen appears without a manual
+  // reload.
+  useEffect(() => {
+    if (isCaregiverRoute || tab !== "bookings") return undefined;
+    const refresh = () => {
+      refreshBookings().catch(() => {});
+    };
+    const timer = window.setInterval(refresh, 15000);
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [isCaregiverRoute, tab, refreshBookings]);
 
   async function loadMoreBookings() {
     if (!bookingCursor || loadingMore) return;
@@ -256,6 +282,7 @@ function AccountPage() {
           loadingMore={loadingMore}
           loadMoreBookings={loadMoreBookings}
           loadError={loadError}
+          onChanged={refreshBookings}
         />
       ) : null}
 
@@ -306,7 +333,7 @@ function SummaryCard({ label, value }) {
   );
 }
 
-function BookingsTab({ bookings, bookingCursor, loadingMore, loadMoreBookings, loadError }) {
+function BookingsTab({ bookings, bookingCursor, loadingMore, loadMoreBookings, loadError, onChanged }) {
   return (
     <div className="mt-7">
       <h2 className="font-heading text-[1.5rem] text-foreground">Your requests</h2>
@@ -369,6 +396,8 @@ function BookingsTab({ bookings, bookingCursor, loadingMore, loadMoreBookings, l
                 {booking.notes ? (
                   <p className="mt-3 text-[0.85rem] leading-relaxed text-muted-foreground">{booking.notes}</p>
                 ) : null}
+
+                <BookingJourneyPanel booking={booking} onChanged={onChanged} />
               </li>
             );
           })}
