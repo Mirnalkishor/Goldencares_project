@@ -1,17 +1,25 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, Check, Clock, PhoneCall } from "lucide-react";
+import { ArrowRight, Banknote, Check, Clock, PhoneCall } from "lucide-react";
 import { formatDate, formatDuration } from "@/lib/format";
 import { serviceBySlug } from "@/lib/services";
 import { CONTACT } from "@/lib/site";
 import { getVisitPriceInr } from "@/lib/payu";
 import { useState } from "react";
 
-export default function BookingConfirmed({ form, isAuthenticated, bookingId, paymentToken, onReset }) {
+export default function BookingConfirmed({
+  form,
+  isAuthenticated,
+  bookingId,
+  paymentToken,
+  paymentMethod,
+  onReset,
+}) {
   const service = serviceBySlug(form.service_slug);
   const [checkout, setCheckout] = useState(null);
   const [paymentError, setPaymentError] = useState("");
   const [paying, setPaying] = useState(false);
   const amountInr = getVisitPriceInr(form.duration_hours);
+  const isCod = paymentMethod === "cod";
 
   async function beginPayment() {
     setPaying(true);
@@ -44,7 +52,7 @@ export default function BookingConfirmed({ form, isAuthenticated, bookingId, pay
   }
 
   return (
-    <div className="rounded-[2rem] border border-border bg-card p-6 sm:p-9">
+    <div data-booking-id={bookingId} className="rounded-[2rem] border border-border bg-card p-6 sm:p-9">
       <span className="grid h-14 w-14 place-items-center rounded-full bg-primary text-primary-foreground">
         <Check className="h-6 w-6" />
       </span>
@@ -61,6 +69,12 @@ export default function BookingConfirmed({ form, isAuthenticated, bookingId, pay
           <div className="flex justify-between gap-4">
             <dt className="text-muted-foreground">Quoted price</dt>
             <dd className="text-right font-semibold text-foreground">₹{amountInr}</dd>
+          </div>
+          <div className="flex justify-between gap-4">
+            <dt className="text-muted-foreground">Payment method</dt>
+            <dd className="text-right font-medium text-foreground">
+              {isCod ? "Cash on delivery" : "Online · PayU"}
+            </dd>
           </div>
           <div className="flex justify-between gap-4">
             <dt className="text-muted-foreground">Service</dt>
@@ -98,38 +112,53 @@ export default function BookingConfirmed({ form, isAuthenticated, bookingId, pay
         </dl>
       </div>
 
-      <div className="mt-6 rounded-xl border border-primary/20 bg-primary/5 p-4">
-        <p className="text-[0.9rem] font-semibold text-foreground">Pay securely with PayU</p>
-        <p className="mt-1 text-[0.82rem] leading-relaxed text-muted-foreground">
-          This request is not yet a confirmed visit. You can pay the quoted ₹{amountInr} now; our team will still
-          call to confirm availability and timing.
-        </p>
-        {paymentError ? (
-          <p role="alert" className="mt-3 text-[0.85rem] text-destructive">{paymentError}</p>
-        ) : null}
-        {checkout ? (
-          <form action={checkout.action} method="post" className="mt-4">
-            {Object.entries(checkout.fields).map(([name, value]) => (
-              <input key={name} type="hidden" name={name} value={value} />
-            ))}
+      {isCod ? (
+        <div className="mt-6 rounded-xl border border-primary/20 bg-primary/5 p-4">
+          <p className="inline-flex items-center gap-2 text-[0.9rem] font-semibold text-foreground">
+            <Banknote className="h-4 w-4 text-primary" /> Pay ₹{amountInr} at the visit
+          </p>
+          <p className="mt-1 text-[0.82rem] leading-relaxed text-muted-foreground">
+            You’ve chosen cash on delivery. Please keep ₹{amountInr} ready and pay the companion after the
+            visit is complete. No online payment is needed.
+          </p>
+          <p className="mt-2 text-[0.8rem] text-muted-foreground">
+            Our team will still call {form.phone} to confirm the companion and timing.
+          </p>
+        </div>
+      ) : (
+        <div className="mt-6 rounded-xl border border-primary/20 bg-primary/5 p-4">
+          <p className="text-[0.9rem] font-semibold text-foreground">Pay securely with PayU</p>
+          <p className="mt-1 text-[0.82rem] leading-relaxed text-muted-foreground">
+            This request is not yet a confirmed visit. You can pay the quoted ₹{amountInr} now; our team will still
+            call to confirm availability and timing.
+          </p>
+          {paymentError ? (
+            <p role="alert" className="mt-3 text-[0.85rem] text-destructive">{paymentError}</p>
+          ) : null}
+          {checkout ? (
+            <form action={checkout.action} method="post" className="mt-4">
+              {Object.entries(checkout.fields).map(([name, value]) => (
+                <input key={name} type="hidden" name={name} value={value} />
+              ))}
+              <button
+                type="submit"
+                className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-[0.9rem] font-semibold text-primary-foreground"
+              >
+                Continue to PayU
+              </button>
+            </form>
+          ) : (
             <button
-              type="submit"
-              className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-[0.9rem] font-semibold text-primary-foreground"
+              type="button"
+              onClick={beginPayment}
+              disabled={paying}
+              className="mt-4 inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-[0.9rem] font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-70"
             >
-              Continue to PayU
+              {paying ? "Preparing secure payment…" : `Pay ₹${amountInr} securely`}
             </button>
-          </form>
-        ) : (
-          <button
-            type="button"
-            onClick={beginPayment}
-            disabled={paying}
-            className="mt-4 inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-[0.9rem] font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            {paying ? "Preparing secure payment…" : `Pay ₹${amountInr} securely`}
-          </button>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
         {[

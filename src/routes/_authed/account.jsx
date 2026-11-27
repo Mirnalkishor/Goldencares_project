@@ -450,8 +450,20 @@ function OverviewTab({ bookings, payments, application, firstName, isCaregiver }
         <InfoRow
           icon={CreditCard}
           title="Latest payment"
-          value={latestPayment ? `₹${paymentAmount(latestPayment).toFixed(2)}` : "No payment yet"}
-          detail={latestPayment ? paymentStatus(latestPayment) : undefined}
+          value={
+            latestPayment
+              ? `₹${paymentAmount(latestPayment).toFixed(2)}`
+              : latestBooking?.paymentStatus === "cod"
+                ? "Cash due at visit"
+                : "No payment yet"
+          }
+          detail={
+            latestPayment
+              ? paymentStatus(latestPayment)
+              : latestBooking?.paymentStatus === "cod"
+                ? `For ${latestBooking.service_name || "your booking"}`
+                : undefined
+          }
         />
         {isCaregiver ? (
           <InfoRow

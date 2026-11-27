@@ -11,12 +11,14 @@ import StepService from "./steps/StepService";
 import StepDuration from "./steps/StepDuration";
 import StepAddress, { validateAddressDraft } from "./steps/StepAddress";
 import StepSchedule from "./steps/StepSchedule";
+import StepPayment from "./steps/StepPayment";
 
 const STEPS = [
   { key: "service", label: "Service" },
   { key: "duration", label: "Hours" },
   { key: "address", label: "Address" },
   { key: "schedule", label: "When" },
+  { key: "payment", label: "Payment" },
 ];
 
 const ADDRESS_FIELDS = [
@@ -70,6 +72,7 @@ function emptyForm(initialService, initialDuration) {
     address: "",
     preferred_date: "",
     preferred_time: "",
+    payment_method: "",
     full_name: "",
     phone: "",
     email: "",
@@ -221,6 +224,9 @@ export default function BookingWizard({ initialService, initialDuration }) {
       return "Please choose an available duration for this service.";
     }
     if (index === 2) return validateAddressDraft(form);
+    if (index === 4 && !["online", "cod"].includes(form.payment_method)) {
+      return "Choose how you’d like to pay: online or cash on delivery.";
+    }
     return "";
   }
 
@@ -252,14 +258,16 @@ export default function BookingWizard({ initialService, initialDuration }) {
     setError("");
     try {
       const service = serviceBySlug(form.service_slug);
-      const paymentToken = createPaymentToken();
-      const paymentTokenHash = await hashPaymentToken(paymentToken);
-      const booking = await base44.entities.BookingRequest.create({
+      const isCod = form.payment_method === "cod";
+      const paymentToken = isCod ? null : createPaymentToken();
+      const paymentTokenHash = paymentToken ? await hashPaymentToken(paymentToken) : null;
+      const payload = {
         request_type: "visit",
         service_name: service?.name || "Companion visit",
         duration_hours: Number(form.duration_hours),
         userId: user.id,
-        paymentStatus: "pending_payment",
+        payment_method: form.payment_method,
+        paymentStatus: isCod ? "cod" : "pending_payment",
         paymentId: "",
         transactionId: "",
         city: form.city,
@@ -278,12 +286,13 @@ export default function BookingWizard({ initialService, initialDuration }) {
         language_preference: form.language_preference,
         preferred_contact: form.preferred_contact,
         notes: form.notes,
-        payment_token_hash: paymentTokenHash,
         status: "new",
-      });
+      };
+      if (paymentTokenHash) payload.payment_token_hash = paymentTokenHash;
+      const booking = await base44.entities.BookingRequest.create(payload);
       if (!booking?.id) throw new Error("The booking was saved but no booking reference was returned.");
       setState("idle");
-      setSubmitted({ form, bookingId: booking.id, paymentToken });
+      setSubmitted({ form, bookingId: booking.id, paymentToken, paymentMethod: form.payment_method });
     } catch (err) {
       setState("idle");
       setError(err?.message || "We could not send your request. Please try again, or email info@goldencares.in.");
@@ -309,6 +318,7 @@ export default function BookingWizard({ initialService, initialDuration }) {
           isAuthenticated={isAuthenticated}
           bookingId={submitted.bookingId}
           paymentToken={submitted.paymentToken}
+          paymentMethod={submitted.paymentMethod}
           onReset={reset}
         />
       </div>
@@ -338,6 +348,7 @@ export default function BookingWizard({ initialService, initialDuration }) {
             />
           ) : null}
           {step === 3 ? <StepSchedule form={form} setField={setField} /> : null}
+          {step === 4 ? <StepPayment form={form} setField={setField} /> : null}
 
           {error ? (
             <p

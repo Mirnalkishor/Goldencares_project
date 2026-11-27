@@ -10,6 +10,7 @@ const STYLES = {
   in_progress: { label: "Visit in progress", classes: "border-blue-200 bg-blue-50 text-blue-800" },
   completion_requested: { label: "Completion requested", classes: "border-amber-200 bg-amber-50 text-amber-900" },
   pending_payment: { label: "Awaiting payment", classes: "border-amber-200 bg-amber-50 text-amber-900" },
+  cod: { label: "Cash due at visit", classes: "border-emerald-200 bg-emerald-50 text-emerald-800" },
   caregiver_noshow: { label: "Caregiver no-show", classes: "border-rose-200 bg-rose-50 text-rose-800" },
   expired: { label: "Expired", classes: "border-border bg-muted text-muted-foreground" },
   cancelled: { label: "Cancelled", classes: "border-border bg-muted text-muted-foreground" },

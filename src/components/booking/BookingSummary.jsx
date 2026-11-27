@@ -34,12 +34,22 @@ export default function BookingSummary({ form, steps, current, onJump }) {
       step: 3,
     },
     { label: "Contact", value: form.phone || "Not added", step: 2 },
+    {
+      label: "Payment",
+      value:
+        form.payment_method === "cod"
+          ? "Cash on delivery"
+          : form.payment_method === "online"
+            ? "Pay online"
+            : "Not chosen",
+      step: 4,
+    },
   ];
 
   return (
     <aside className="rounded-[1.75rem] border border-border bg-card p-6 lg:sticky lg:top-32">
       <h2 className="font-heading text-[1.3rem] text-foreground">Your request</h2>
-      <p className="mt-1 text-[0.82rem] text-muted-foreground">Pay securely only if you choose to.</p>
+      <p className="mt-1 text-[0.82rem] text-muted-foreground">Choose online payment or cash on delivery.</p>
 
       <dl className="mt-5 space-y-3">
         {rows.map((row) => (
