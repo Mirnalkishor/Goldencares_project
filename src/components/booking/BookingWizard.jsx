@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { collection, doc } from "firebase/firestore";
 import { base44 } from "@/api/base44Client";
+import { getDb } from "@/api/firebaseClient";
 import { useAuth } from "@/lib/AuthContext";
 import {
   getServiceDurationLabel,
@@ -8,7 +10,7 @@ import {
   useLiveServices,
 } from "@/lib/serviceCatalog";
 import { COD_ENABLED, isPaymentMethodAvailable } from "@/lib/paymentMethods";
-import { ArrowLeft, ArrowRight, Loader2, Lock } from "lucide-react";
+import { ArrowLeft, ArrowRight, Lock } from "lucide-react";
 import BookingProgress from "./BookingProgress";
 import BookingSummary from "./BookingSummary";
 import BookingConfirmed from "./BookingConfirmed";
@@ -98,7 +100,6 @@ export default function BookingWizard({ initialService, initialDuration }) {
   const [form, setForm] = useState(() => emptyForm(initialService, initialDuration));
   const [step, setStep] = useState(0);
   const [error, setError] = useState("");
-  const [state, setState] = useState("idle");
   const [submitted, setSubmitted] = useState(false);
   const [savedAddresses, setSavedAddresses] = useState([]);
   const [activeAddressId, setActiveAddressId] = useState(null);
@@ -264,7 +265,6 @@ export default function BookingWizard({ initialService, initialDuration }) {
       }
     }
 
-    setState("saving");
     setError("");
     try {
       const service = serviceBySlug(form.service_slug);
@@ -305,13 +305,18 @@ export default function BookingWizard({ initialService, initialDuration }) {
         notes: form.notes,
         status: "new",
       };
-      const booking = await base44.entities.BookingRequest.create(payload);
-      if (!booking?.id) throw new Error("The booking was saved but no booking reference was returned.");
-      setState("idle");
-      setSubmitted({ form, bookingId: booking.id, paymentMethod: form.payment_method });
+      // Reserve a reference for Razorpay, but do NOT write bookings/{id} yet.
+      // The callable stores this draft inside the private transaction and only
+      // creates the booking after the payment signature verifies.
+      const bookingId = doc(collection(getDb(), "bookings")).id;
+      setSubmitted({
+        form,
+        bookingId,
+        bookingDraft: payload,
+        paymentMethod: form.payment_method,
+      });
     } catch (err) {
-      setState("idle");
-      setError(err?.message || "We could not send your request. Please try again, or email info@goldencares.in.");
+      setError(err?.message || "We could not prepare checkout. Please try again, or email info@goldencares.in.");
     }
   }
 
@@ -333,6 +338,7 @@ export default function BookingWizard({ initialService, initialDuration }) {
           form={submitted.form}
           isAuthenticated={isAuthenticated}
           bookingId={submitted.bookingId}
+          bookingDraft={submitted.bookingDraft}
           paymentMethod={submitted.paymentMethod}
           onReset={reset}
         />
@@ -386,16 +392,11 @@ export default function BookingWizard({ initialService, initialDuration }) {
 
             <button
               type="submit"
-              disabled={state === "saving"}
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-7 py-3.5 text-[0.95rem] font-semibold text-primary-foreground transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-70"
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-7 py-3.5 text-[0.95rem] font-semibold text-primary-foreground transition-transform hover:-translate-y-0.5"
             >
-              {state === "saving" ? (
+              {step === STEPS.length - 1 ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" /> Sending request
-                </>
-              ) : step === STEPS.length - 1 ? (
-                <>
-                  Confirm request <ArrowRight className="h-4 w-4" />
+                  Continue to payment <ArrowRight className="h-4 w-4" />
                 </>
               ) : (
                 <>

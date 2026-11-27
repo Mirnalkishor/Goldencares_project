@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { CheckCircle2, Mail, Smartphone } from "lucide-react";
 import { toast } from "sonner";
@@ -42,10 +42,8 @@ export function ActivationPage() {
   const navigate = useNavigate();
   const { user, refresh } = useAuth();
   const returnTo = safeReturnTo();
-  const [emailCode, setEmailCode] = useState("");
   const [phone, setPhone] = useState(String(user?.phone || ""));
   const [phoneCode, setPhoneCode] = useState("");
-  const [emailSent, setEmailSent] = useState(false);
   const [phoneSent, setPhoneSent] = useState(false);
   const [confirmation, setConfirmation] = useState(null);
   const [busy, setBusy] = useState("");
@@ -53,41 +51,50 @@ export function ActivationPage() {
 
   const emailVerified = user?.activation?.emailVerified === true;
   const phoneVerified = user?.activation?.phoneVerified === true;
+  const firebaseEmailVerified = user?.email_verified === true;
   const complete = user?.activation?.complete === true;
 
-  async function finish() {
-    await refresh();
-    const destination = returnTo && returnTo !== "/activate" ? returnTo : (user?.role === "caregiver" ? "/caregiver" : "/account");
-    navigate({ to: destination, replace: true });
+  function destinationFor(nextUser) {
+    if (returnTo && returnTo !== "/activate") return returnTo;
+    return nextUser?.role === "caregiver" ? "/caregiver" : "/account";
   }
 
-  async function sendEmailCode() {
+  useEffect(() => {
+    if (complete) navigate({ to: destinationFor(user), replace: true });
+    // `destinationFor` only reads the current render's user/returnTo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [complete, navigate]);
+
+  async function refreshAndFinish() {
+    const next = await refresh();
+    if (next?.user?.activation?.complete === true) {
+      navigate({ to: destinationFor(next.user), replace: true });
+    }
+    return next;
+  }
+
+  async function sendEmailLink() {
     setBusy("email-send");
     setError("");
     try {
-      await base44.functions.invoke("activationSendEmailOtp", {});
-      setEmailSent(true);
-      toast.success("Email code sent", { description: "Check your inbox. The code expires in 10 minutes." });
+      await base44.auth.sendActivationEmail();
+      toast.success("Verification link sent", { description: "Open the link in your inbox to verify this email." });
     } catch (err) {
-      setError(err.message || "Could not send the email code.");
+      setError(err.message || "Could not send the verification link.");
     } finally {
       setBusy("");
     }
   }
 
-  async function verifyEmailCode(event) {
-    event.preventDefault();
-    setBusy("email-verify");
+  async function confirmEmail() {
+    setBusy("email-confirm");
     setError("");
     try {
-      await base44.functions.invoke("activationVerifyEmailOtp", { code: emailCode });
-      await refresh();
-      setEmailSent(false);
-      setEmailCode("");
+      await base44.functions.invoke("activationVerifyEmail", {});
+      await refreshAndFinish();
       toast.success("Email verified");
-      if (phoneVerified) await finish();
     } catch (err) {
-      setError(err.message || "Could not verify that code.");
+      setError(err.message || "Open the verification link in your email first.");
     } finally {
       setBusy("");
     }
@@ -122,12 +129,11 @@ export function ActivationPage() {
     try {
       await completePhoneLink(confirmation, phoneCode);
       await base44.functions.invoke("activationVerifyPhone", { phone });
-      await refresh();
+      await refreshAndFinish();
       setPhoneSent(false);
       setPhoneCode("");
       setConfirmation(null);
       toast.success("Mobile verified");
-      if (emailVerified) await finish();
     } catch (err) {
       setError(err.message || "Could not verify that code.");
     } finally {
@@ -146,29 +152,49 @@ export function ActivationPage() {
   return (
     <AuthLayout icon={Mail} title="Activate your account" subtitle="Verify both your email and mobile number to continue">
       <div className="mb-6 space-y-2">
-        <StatusRow done={emailVerified} icon={Mail} title="Email verification" detail={emailVerified ? "Verified" : "6-digit code sent to your inbox"} />
+        <StatusRow
+          done={emailVerified}
+          icon={Mail}
+          title="Email verification"
+          detail={
+            emailVerified
+              ? "Verified"
+              : firebaseEmailVerified
+                ? "Link opened — confirm below"
+                : "Verification link sent to your inbox"
+          }
+        />
         <StatusRow done={phoneVerified} icon={Smartphone} title="Mobile verification" detail={phoneVerified ? "Verified" : "SMS code sent to your number"} />
       </div>
       <AuthError>{error}</AuthError>
 
       {!emailVerified ? (
-        <form onSubmit={verifyEmailCode} className="mb-7 rounded-xl border border-border bg-card p-4">
-          <p className="mb-3 text-sm font-semibold text-foreground">1. Verify email</p>
-          {!emailSent ? (
-            <button type="button" onClick={sendEmailCode} disabled={busy === "email-send"} className="text-sm font-semibold text-primary hover:underline">
-              {busy === "email-send" ? "Sending…" : "Send email code"}
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            confirmEmail();
+          }}
+          className="mb-7 rounded-xl border border-border bg-card p-4"
+        >
+          <p className="mb-1 text-sm font-semibold text-foreground">1. Verify email</p>
+          <p className="text-[0.82rem] leading-relaxed text-muted-foreground">
+            {firebaseEmailVerified
+              ? "Your email is verified. Confirm below to continue."
+              : "Open the link we emailed you. It returns here and verifies your email automatically."}
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <SubmitButton busy={busy === "email-confirm"} busyLabel="Checking…">
+              I&apos;ve opened the link
+            </SubmitButton>
+            <button
+              type="button"
+              onClick={sendEmailLink}
+              disabled={busy === "email-send"}
+              className="text-sm font-semibold text-primary hover:underline disabled:opacity-60"
+            >
+              {busy === "email-send" ? "Sending…" : "Resend verification link"}
             </button>
-          ) : (
-            <>
-              <div className="mb-4 flex justify-center"><OtpInput value={emailCode} onChange={setEmailCode} /></div>
-              <SubmitButton busy={busy === "email-verify"} busyLabel="Verifying…" disabled={emailCode.length < 6}>
-                Verify email
-              </SubmitButton>
-              <button type="button" onClick={sendEmailCode} disabled={busy === "email-send"} className="mt-3 text-xs font-medium text-primary hover:underline">
-                Resend code
-              </button>
-            </>
-          )}
+          </div>
         </form>
       ) : null}
 

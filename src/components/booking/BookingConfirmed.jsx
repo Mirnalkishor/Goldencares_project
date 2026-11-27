@@ -13,6 +13,7 @@ export default function BookingConfirmed({
   form,
   isAuthenticated,
   bookingId,
+  bookingDraft,
   paymentMethod,
   onReset,
 }) {
@@ -39,7 +40,12 @@ export default function BookingConfirmed({
     setPaymentState("starting");
     setPaymentMessage("");
     try {
-      const order = await base44.functions.invoke("createRazorpayOrder", { bookingId });
+      const order = await base44.functions.invoke("createRazorpayOrder", {
+        bookingId,
+        // No bookings/{id} exists yet. The callable validates this draft and
+        // keeps it inside the private transaction until payment succeeds.
+        booking: bookingDraft,
+      });
       if (!order?.orderId || !order?.keyId || !Number.isFinite(Number(order.amount))) {
         throw new Error("The payment service returned an incomplete order. Please try again.");
       }

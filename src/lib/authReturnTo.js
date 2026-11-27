@@ -11,7 +11,7 @@
 // would carry a live one-time credential through the login round-trip (and,
 // via Google, into the provider's OAuth state), and the other three would just
 // loop. `/oauth/consent` is a legitimate destination and is not in this set.
-const AUTH_PAGES = new Set(["/login", "/register", "/activate", "/forgot-password", "/reset-password"]);
+const AUTH_PAGES = new Set(["/login", "/register", "/activate", "/verify-email", "/forgot-password", "/reset-password"]);
 
 // Signed-in users land on their account portal, not the public marketing home page.
 export const DEFAULT_AUTH_HOME = "/account";

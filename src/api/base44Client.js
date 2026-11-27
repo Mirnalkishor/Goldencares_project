@@ -183,11 +183,29 @@ const authApi = {
     try { return Boolean(a.currentUser || window.localStorage.getItem("firebase_token")); } catch { return Boolean(a.currentUser); }
   },
   async setToken(token) { /* Firebase uses its own session; token kept for parity. */ return { ok: true, token: token ?? null }; },
-  async register({ email, password, full_name, name } = {}) {
+  async register({ email, password, full_name, name, verificationUrl } = {}) {
     const cred = await createUserWithEmailAndPassword(getAuthClient(), email, password);
     if (full_name || name) await updateProfile(cred.user, { displayName: full_name || name }).catch(() => {});
-    await sendEmailVerification(cred.user).catch(() => {});
+    await sendEmailVerification(cred.user, verificationUrl ? { url: verificationUrl } : undefined).catch(() => {});
     return { user: cred.user, needsVerification: true };
+  },
+  async sendActivationEmail(returnTo = "/activate") {
+    const user = getAuthClient().currentUser;
+    if (!user) throw new Error("Sign in before requesting a verification link.");
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const url = `${origin}/verify-email?returnTo=${encodeURIComponent(returnTo)}`;
+    await sendEmailVerification(user, { url });
+    return { ok: true };
+  },
+  async applyEmailActionCode(code) {
+    if (!code) throw new Error("The verification link is missing its code.");
+    await applyActionCode(getAuthClient(), code);
+    const user = getAuthClient().currentUser;
+    if (user) {
+      await reload(user).catch(() => {});
+      await getIdToken(user, true).catch(() => {});
+    }
+    return { ok: true };
   },
   async loginWithProvider(provider = "google", _opts = {}) {
     const a = getAuthClient();
@@ -207,12 +225,10 @@ const authApi = {
     await confirmPasswordReset(getAuthClient(), token || code, newPassword || password);
     return { ok: true };
   },
-  async verifyOtp(arg = {}) {
-    const code = arg.code || arg.otp || arg.token;
-    if (code) await applyActionCode(getAuthClient(), code).catch(() => {});
-    return { ok: true };
-  },
-  async resendOtp() { const u = getAuthClient().currentUser; if (u) await sendEmailVerification(u); return { ok: true }; },
+  // Legacy names kept for callers outside this repo; both are real Firebase
+  // email-link actions now, not custom OTPs.
+  async verifyOtp(arg = {}) { return authApi.applyEmailActionCode(arg.code || arg.oobCode || arg.otp || arg.token); },
+  async resendOtp() { return authApi.sendActivationEmail(); },
   async changePassword(_email, _old, newPassword) { await updatePassword(getAuthClient().currentUser, newPassword); return { ok: true }; },
 };
 

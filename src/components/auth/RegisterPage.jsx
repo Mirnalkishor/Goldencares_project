@@ -74,11 +74,17 @@ export function RegisterPage() {
         });
       }
 
+      let emailSent = true;
       try {
-        await base44.functions.invoke("activationSendEmailOtp", {});
+        await base44.auth.sendActivationEmail();
       } catch {
-        toast("Account created", { description: "Open the activation page and resend the email code." });
+        emailSent = false;
       }
+      toast("Account created", {
+        description: emailSent
+          ? "We've emailed you a verification link. Open it, then verify your mobile number."
+          : "Open the activation page to resend the verification link.",
+      });
 
       const destination = `/activate?returnTo=${encodeURIComponent(returnTo)}`;
       window.location.href = destination;

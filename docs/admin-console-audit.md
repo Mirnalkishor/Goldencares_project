@@ -196,6 +196,7 @@ Implemented after the audit:
 - Cursor-paged ledgers with filters and copy actions, including Razorpay transaction IDs and RazorpayX payout references.
 - The old `/admin` link target was replaced with `/admin/dashboard`; stale PayU checkout files/tests were removed in favour of the Razorpay flow.
 - Checkout is online-only for now: COD is disabled through a single `COD_ENABLED` switch, and pre-payment copy no longer says the request is with the team or confirmed.
+- Web checkout no longer writes `bookings/{id}` before payment: the draft is held privately in the transaction, and the booking is created only after the Razorpay signature (or captured webhook) is verified. Unpaid legacy rows are hidden from the caregiver pick-order feed.
 - The public web catalogue now reads Firestore `services` live through `serviceCatalog.js`; admin pricing edits (including editable duration variants) appear on the website and match Razorpay's live-price validation.
 
 Remaining: live verification against a real admin account/session. No Playwright or deployment has been run.
@@ -209,7 +210,7 @@ The four audit findings were patched locally in the backend working tree (not de
 3. `notifications.js:createNotification` only bypasses booking-participant checks when `getAdminContext` confirms an active admin session.
 4. Dashboard pending approvals and the landing-stats certified count now use `users.isApproved`, the field written by `adminApproveCaregiver`, instead of legacy `servicePersonnel.idVerified`.
 
-Local backend checks: `node --check` on all modified files and `npm test` (54/54) passed.
+Local backend checks: `node --check` on all modified files and `npm test` (60/60) passed.
 
 ## 7. Recommended web implementation order
 

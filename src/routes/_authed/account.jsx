@@ -415,7 +415,13 @@ function BookingsTab({ bookings, bookingCursor, loadingMore, loadMoreBookings, l
                         : `${formatDuration(booking.duration_hours)} · ${booking.city}`}
                     </p>
                   </div>
-                  <StatusPill status={booking.status} />
+                  <StatusPill
+                    status={
+                      booking.paymentStatus === "pending_payment"
+                        ? "pending_payment"
+                        : booking.status
+                    }
+                  />
                 </div>
 
                 <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 border-t border-border pt-4 text-[0.85rem] text-muted-foreground">
