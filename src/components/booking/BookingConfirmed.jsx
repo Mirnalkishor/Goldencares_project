@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { formatDate, formatDuration } from "@/lib/format";
 import { openRazorpayCheckout, paymentErrorMessage } from "@/lib/razorpay";
-import { getServicePriceInr, serviceBySlug } from "@/lib/services";
+import { getServicePriceInr, serviceBySlug } from "@/lib/serviceCatalog";
 import { CONTACT } from "@/lib/site";
 
 const PAYING_STATES = new Set(["starting", "awaiting", "verifying"]);

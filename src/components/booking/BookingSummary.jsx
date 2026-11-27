@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Clock, ShieldCheck } from "lucide-react";
 import { formatDate, formatDuration } from "@/lib/format";
-import { getServicePriceInr, serviceBySlug } from "@/lib/services";
+import { getServicePriceInr, serviceBySlug } from "@/lib/serviceCatalog";
 import { CONTACT } from "@/lib/site";
 
 export default function BookingSummary({ form, steps, current, onJump }) {

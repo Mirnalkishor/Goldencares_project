@@ -5,7 +5,8 @@ import {
   getServiceDurationLabel,
   getServicePriceInr,
   serviceBySlug,
-} from "@/lib/services";
+  useLiveServices,
+} from "@/lib/serviceCatalog";
 import { COD_ENABLED, isPaymentMethodAvailable } from "@/lib/paymentMethods";
 import { ArrowLeft, ArrowRight, Loader2, Lock } from "lucide-react";
 import BookingProgress from "./BookingProgress";
@@ -93,6 +94,7 @@ function emptyForm(initialService, initialDuration) {
 
 export default function BookingWizard({ initialService, initialDuration }) {
   const { user, isAuthenticated } = useAuth();
+  const { services: liveServices } = useLiveServices();
   const [form, setForm] = useState(() => emptyForm(initialService, initialDuration));
   const [step, setStep] = useState(0);
   const [error, setError] = useState("");
@@ -345,8 +347,8 @@ export default function BookingWizard({ initialService, initialDuration }) {
         <BookingProgress steps={STEPS} current={step} onJump={setStep} />
 
         <form onSubmit={handleSubmit} noValidate className="rounded-[2rem] border border-border bg-card p-5 sm:p-8">
-          {step === 0 ? <StepService form={form} setField={setField} /> : null}
-          {step === 1 ? <StepDuration form={form} setField={setField} /> : null}
+          {step === 0 ? <StepService form={form} setField={setField} services={liveServices} /> : null}
+          {step === 1 ? <StepDuration form={form} setField={setField} services={liveServices} /> : null}
           {step === 2 ? (
             <StepAddress
               form={form}

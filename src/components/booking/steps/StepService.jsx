@@ -1,7 +1,8 @@
 import ChoiceCard from "../ChoiceCard";
-import { services } from "@/lib/services";
+import { getServicesSnapshot } from "@/lib/serviceCatalog";
 
-export default function StepService({ form, setField }) {
+export default function StepService({ form, setField, services }) {
+  const visibleServices = services || getServicesSnapshot();
   return (
     <div>
       <h2 className="font-heading text-[1.6rem] leading-tight text-foreground sm:text-[1.9rem]">
@@ -12,7 +13,7 @@ export default function StepService({ form, setField }) {
       </p>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
-        {services.map((service) => {
+        {visibleServices.map((service) => {
           const Icon = service.icon;
           return (
             <ChoiceCard

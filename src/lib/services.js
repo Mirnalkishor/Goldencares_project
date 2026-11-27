@@ -9,6 +9,8 @@ import {
   Smartphone,
 } from "lucide-react";
 
+// Static fallback catalogue. The live web app reads Firestore `services` through
+// `src/lib/serviceCatalog.js`; this copy keeps SSR, tests and first paint stable.
 export const services = [
   {
     slug: "temple-visit",

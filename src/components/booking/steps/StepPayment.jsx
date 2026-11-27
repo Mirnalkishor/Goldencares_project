@@ -1,6 +1,6 @@
 import { Banknote, CreditCard } from "lucide-react";
 import ChoiceCard from "../ChoiceCard";
-import { getServicePriceInr } from "@/lib/services";
+import { getServicePriceInr } from "@/lib/serviceCatalog";
 import { COD_ENABLED } from "@/lib/paymentMethods";
 
 export default function StepPayment({ form, setField }) {

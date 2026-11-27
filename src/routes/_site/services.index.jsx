@@ -4,7 +4,7 @@ import PageHero from "@/components/site/PageHero";
 import Reveal from "@/components/site/Reveal";
 import { DisclaimerBand } from "@/components/site/Disclaimer";
 import CtaSection from "@/components/site/CtaSection";
-import { services } from "@/lib/services";
+import { useLiveServices } from "@/lib/serviceCatalog";
 
 export const Route = createFileRoute("/_site/services/")({
   head: () => ({
@@ -21,12 +21,13 @@ export const Route = createFileRoute("/_site/services/")({
 });
 
 function ServicesPage() {
+  const { services } = useLiveServices();
   return (
     <>
       <PageHero
         eyebrow="Services"
         title="Small hours, spent well."
-        intro="Eight services, each bookable for one, two or three hours. Choose what your parent actually needs this week — we handle the rest, properly."
+        intro={`${services.length} services, each with clear, upfront pricing. Choose what your parent actually needs this week — we handle the rest, properly.`}
       >
         <Link
           to="/book"

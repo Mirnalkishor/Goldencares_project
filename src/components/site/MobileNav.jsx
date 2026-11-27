@@ -3,12 +3,13 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/s
 import { ArrowRight, LogOut, Menu } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { CONTACT, NAV } from "@/lib/site";
-import { services } from "@/lib/services";
+import { useLiveServices } from "@/lib/serviceCatalog";
 import Brand from "./Brand";
 import { CallAction, EmailAction, WhatsAppAction } from "./ContactActions";
 
 export default function MobileNav() {
   const { isAuthenticated, user, logout } = useAuth();
+  const { services } = useLiveServices();
 
   return (
     <Sheet>

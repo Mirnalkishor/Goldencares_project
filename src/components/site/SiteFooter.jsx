@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Clock, Mail, MapPin } from "lucide-react";
 import { CITIES, CONTACT, DISCLAIMER, NAV } from "@/lib/site";
-import { services } from "@/lib/services";
+import { useLiveServices } from "@/lib/serviceCatalog";
 import Brand from "./Brand";
 import { CallAction, WhatsAppAction } from "./ContactActions";
 
@@ -13,6 +13,7 @@ const legal = [
 ];
 
 export default function SiteFooter() {
+  const { services } = useLiveServices();
   return (
     <footer className="mt-20 bg-primary text-primary-foreground">
       <div className="container-page py-14 lg:py-16">

@@ -1,16 +1,20 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Check, Clock, ShieldCheck } from "lucide-react";
 import Reveal from "@/components/site/Reveal";
 import CtaSection from "@/components/site/CtaSection";
 import { CallAction, EmailAction } from "@/components/site/ContactActions";
-import { serviceBySlug, services } from "@/lib/services";
+import { serviceBySlug, useLiveServices } from "@/lib/serviceCatalog";
 import { CITIES, CONTACT } from "@/lib/site";
 
 export const Route = createFileRoute("/_site/services/$slug")({
   loader: ({ params }) => {
-    const service = serviceBySlug(params.slug);
-    if (!service) throw notFound();
-    return { slug: service.slug, name: service.name, benefit: service.benefit, intro: service.intro };
+    const fallback = serviceBySlug(params.slug);
+    return {
+      slug: params.slug,
+      name: fallback?.name || "Service",
+      benefit: fallback?.benefit || "Companionship and help for seniors.",
+      intro: fallback?.intro || "Clear pricing and a warm, dependable companion.",
+    };
   },
   head: ({ loaderData }) => ({
     meta: [
@@ -32,8 +36,23 @@ export const Route = createFileRoute("/_site/services/$slug")({
 
 function ServiceDetailPage() {
   const loaderData = Route.useLoaderData();
-  const service = serviceBySlug(loaderData.slug);
-  const related = services.filter((item) => item.slug !== service.slug).slice(0, 3);
+  const { services, ready } = useLiveServices();
+  const service = services.find((item) => item.slug === loaderData.slug);
+  const related = services.filter((item) => item.slug !== loaderData.slug).slice(0, 3);
+
+  if (!service) {
+    if (!ready) return null;
+    return (
+      <section className="container-page py-20">
+        <h1 className="font-heading text-[2rem] text-foreground">Service not found</h1>
+        <p className="mt-3 text-muted-foreground">This service is no longer listed.</p>
+        <Link to="/services" className="mt-6 inline-flex text-primary underline underline-offset-4">
+          Browse all services
+        </Link>
+      </section>
+    );
+  }
+
   const Icon = service.icon;
 
   return (

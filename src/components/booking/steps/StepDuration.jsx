@@ -1,5 +1,5 @@
 import ChoiceCard from "../ChoiceCard";
-import { serviceBySlug } from "@/lib/services";
+import { getServicesSnapshot } from "@/lib/serviceCatalog";
 
 const NOTES = {
   1: "Good for a short visit, a walk or a single errand.",
@@ -7,8 +7,9 @@ const NOTES = {
   3: "Best for outings, appointments with waiting, or films.",
 };
 
-export default function StepDuration({ form, setField }) {
-  const service = serviceBySlug(form.service_slug);
+export default function StepDuration({ form, setField, services }) {
+  const visibleServices = services || getServicesSnapshot();
+  const service = visibleServices.find((item) => item.slug === form.service_slug);
   const durations = service?.durations || [1, 2, 3];
 
   return (

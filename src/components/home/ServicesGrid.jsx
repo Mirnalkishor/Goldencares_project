@@ -1,9 +1,10 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 import Reveal from "@/components/site/Reveal";
-import { services } from "@/lib/services";
+import { useLiveServices } from "@/lib/serviceCatalog";
 
 export default function ServicesGrid() {
+  const { services } = useLiveServices();
   return (
     <section className="border-y border-border bg-secondary/40 py-16 lg:py-24">
       <div className="container-page">
@@ -11,10 +12,10 @@ export default function ServicesGrid() {
           <div className="max-w-2xl">
             <p className="eyebrow text-primary/70">Services</p>
             <h2 className="mt-4 font-heading text-[2rem] leading-[1.08] text-foreground text-balance sm:text-[2.7rem]">
-              Eight small things that change a week
+              {services.length} small things that change a week
             </h2>
             <p className="mt-4 text-[1rem] leading-relaxed text-muted-foreground">
-              Each service is bookable for one, two or three hours. Choose one, and we will do it properly.
+              Choose a service and a duration that suits your parent. We will handle the rest, properly.
             </p>
           </div>
           <Link

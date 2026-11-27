@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/lib/AuthContext";
 import { CITIES, CONTACT, hasPhone, hasWhatsApp, telHref, whatsappHref } from "@/lib/site";
-import { services } from "@/lib/services";
+import { useLiveServices } from "@/lib/serviceCatalog";
 import Brand from "./Brand";
 import MobileNav from "./MobileNav";
 
@@ -48,6 +48,7 @@ function HeaderContactButton() {
 
 export default function SiteHeader() {
   const { isAuthenticated, user, logout } = useAuth();
+  const { services } = useLiveServices();
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -108,7 +109,7 @@ export default function SiteHeader() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-[19rem] rounded-2xl border-border bg-card p-2">
                   <DropdownMenuLabel className="px-2 pb-1 text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground">
-                    Eight ways we help
+                    {services.length} ways we help
                   </DropdownMenuLabel>
                   {services.map((service) => {
                     const Icon = service.icon;
