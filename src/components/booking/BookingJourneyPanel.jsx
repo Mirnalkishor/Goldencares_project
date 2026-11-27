@@ -23,13 +23,6 @@ function caregiverName(booking) {
   return booking?.servicePersonnelName || booking?.caregiverName || "Your caregiver";
 }
 
-function codeTime(value) {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
-}
-
 function otpReady(hash, expiresAt) {
   if (!hash || !expiresAt) return false;
   const expiry = new Date(expiresAt).getTime();
@@ -51,7 +44,7 @@ function friendlyError(error, fallback) {
   return raw.replace(/\s*\[\d{3}\]\s*$/, "");
 }
 
-function CodeRow({ code, testId, expiresAt, caregiver, copy }) {
+function CodeRow({ code, testId, caregiver, copy }) {
   return (
     <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl bg-card px-4 py-3">
       <span
@@ -67,9 +60,6 @@ function CodeRow({ code, testId, expiresAt, caregiver, copy }) {
       >
         <Copy className="h-3.5 w-3.5" /> Copy
       </button>
-      {expiresAt ? (
-        <span className="text-[0.75rem] text-muted-foreground">Valid until {codeTime(expiresAt)}</span>
-      ) : null}
       <span className="w-full text-[0.76rem] text-muted-foreground">
         Share this code with {caregiver}.
       </span>
@@ -217,7 +207,6 @@ export default function BookingJourneyPanel({ booking, onChanged }) {
             <CodeRow
               code={SERVICE_CODE}
               testId="arrival-code"
-              expiresAt={booking.startOtpExpiresAt}
               caregiver={caregiverName(booking)}
               copy={copy}
             />
@@ -245,7 +234,6 @@ export default function BookingJourneyPanel({ booking, onChanged }) {
             <CodeRow
               code={SERVICE_CODE}
               testId="completion-code"
-              expiresAt={booking.completionOtpExpiresAt}
               caregiver={caregiverName(booking)}
               copy={copy}
             />

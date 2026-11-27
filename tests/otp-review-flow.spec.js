@@ -41,6 +41,7 @@ test("family and caregiver complete the OTP journey, then the family reviews", a
     await expect(familyJourney).toBeVisible({ timeout: 20000 });
     const arrivalCode = (await familyJourney.locator("[data-testid='arrival-code']").textContent()).trim();
     expect(arrivalCode).toBe("728988");
+    await expect(familyJourney).not.toContainText("Valid until");
     await expect(
       familyJourney.getByRole("button", { name: /Show code again|Get a new code|Show arrival code/ }),
     ).toHaveCount(0);
@@ -60,6 +61,7 @@ test("family and caregiver complete the OTP journey, then the family reviews", a
       await completionJourney.locator("[data-testid='completion-code']").textContent()
     ).trim();
     expect(completionCode).toBe("728988");
+    await expect(completionJourney).not.toContainText("Valid until");
     await expect(
       completionJourney.getByRole("button", { name: /Show code again|Get a new code|Show completion code/ }),
     ).toHaveCount(0);
