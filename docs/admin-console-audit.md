@@ -185,42 +185,29 @@ Admin callables already deployed (the web app needs to call them):
 
 Consumer/machine surfaces not part of the admin console but relevant to the full system: `getPublicConfig`, `getLandingStats`, `serveCmsContent`, `createRazorpayOrder`, `verifyRazorpayPayment`, `razorpayWebhook`, RazorpayX payout details/request/webhook, booking OTP/progress/pick/cancel/reschedule, issue reporting, caregiver self-deletion, location tools, and scheduled jobs.
 
-## 5. Gaps in current `realf` `/admin`
+## 5. Web admin status
 
-Current page only:
+Implemented after the audit:
 
-- Lists bookings, applications (`servicePersonnel`), and transactions through the shim.
-- Filters bookings by a small hard-coded status list with `new/contacted/scheduled/completed/cancelled`.
-- Direct Firestore status updates for bookings/applications.
-- Cursor-less pagination attempt (the shim currently returns `next_cursor: null`).
+- Dedicated `/admin/login`, forced password reset, 8-hour session expiry/supersede watcher, capability flags and a secure callable wrapper that injects `adminSessionId` into every admin call.
+- Responsive shell with dashboard, bookings, issues, users, caregivers, whitelist, pricing, transactions, earnings/TDS CSV, payouts, content/CMS with publish + rollback, ID translator/backfill, audit-log diffs, administrators and help docs.
+- Booking search/detail, force status, price override, reassignment and cancellation with refund reason.
+- Caregiver KYC approval, primary-only stats edits, photo upload, deletion override, whitelist CSV bulk upload and reviews.
+- Cursor-paged ledgers with filters and copy actions, including Razorpay transaction IDs and RazorpayX payout references.
+- The old `/admin` link target was replaced with `/admin/dashboard`; stale PayU checkout files/tests were removed in favour of the Razorpay flow.
 
-Missing:
+Remaining: live verification against a real admin account/session. No Playwright or deployment has been run.
 
-- Admin login/session/password-reset model, role tiers, capability flags, and secure callable client.
-- Dashboard stats and quick actions.
-- Issues triage and live badge.
-- User management and account deletion.
-- Administrator management.
-- Caregiver KYC, stats edit, photo upload, deletion override, reviews.
-- Whitelist/CSV bulk upload.
-- Pricing/variant/fee/image management.
-- Booking search, detail view, force status, price override, reassignment, cancellation with refund.
-- Transaction ledger filters/sorting/copy actions.
-- Earnings report, TDS table, CSV export.
-- Payout ledger.
-- Audit logs with diff view.
-- ID translator and backfill.
-- CMS editor, preview, publish, rollback.
-- Help/contextual docs.
+## 6. Backend hardening status
 
-## 6. Security issues found during audit
+The four audit findings were patched locally in the backend working tree (not deployed or pushed):
 
-These should be fixed in the backend before exposing a full admin console on the web:
+1. `partners.js:whitelistPartnerEmail` now requires a Firebase bearer token plus the full `getAdminContext` session pipeline before writing the allow list.
+2. Admin overrides in `bookings.js` and `payments.js` now use `getAdminContext` instead of a stale `admin` custom claim or the weaker `isAdminUser` helper.
+3. `notifications.js:createNotification` only bypasses booking-participant checks when `getAdminContext` confirms an active admin session.
+4. Dashboard pending approvals and the landing-stats certified count now use `users.isApproved`, the field written by `adminApproveCaregiver`, instead of legacy `servicePersonnel.idVerified`.
 
-1. `partners.js:whitelistPartnerEmail` is an unauthenticated HTTP endpoint that writes the same allow list controlled by primary-admin-only callables.
-2. Several `bookings.js` / `payments.js` admin branches use the weaker `isAdminUser` check instead of the full `getAdminContext` pipeline, bypassing the 8-hour and single-session gates.
-3. `notifications.js:createNotification` trusts `users/{uid}.role === 'admin'` rather than `admin_role_users`/session state.
-4. Dashboard pending-KYC count uses `idVerified`, while `adminApproveCaregiver` writes `isApproved`; the badge and action are not driven by the same field.
+Local backend checks: `node --check` on all modified files and `npm test` (54/54) passed.
 
 ## 7. Recommended web implementation order
 
@@ -230,6 +217,6 @@ These should be fixed in the backend before exposing a full admin console on the
 4. **Caregiver supply** — caregivers, KYC, whitelist/CSV, deletion override.
 5. **Money** — transactions, earnings/TDS/CSV, payouts.
 6. **System** — pricing/CMS, administrators, ID translator, audit log diffs, help docs.
-7. **Backend hardening** — close the four authorization/consistency gaps above.
+7. **Backend hardening** — closed locally in the four files above; still needs deployment after review.
 
 Keep the `realf` visual language (cards, pills, existing Tailwind tokens) throughout; do not port the Flutter theme or Flutter UI structure.

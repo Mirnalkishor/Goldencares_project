@@ -207,7 +207,7 @@ function AccountPage() {
           )}
           {user.role === "admin" ? (
             <Link
-              to="/admin"
+              to="/admin/dashboard"
               className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-3 text-[0.9rem] font-semibold text-foreground"
             >
               Team view

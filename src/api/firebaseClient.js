@@ -54,6 +54,8 @@ export function getDb() {
 }
 
 export const auth = () => getAuth(getFirebaseApp());
+// Alias used by the admin session layer.
+export const getAuthClient = auth;
 export const storage = () => getStorage(getFirebaseApp());
 export const functions = () => getFunctions(getFirebaseApp(), FUNCTIONS_REGION);
 

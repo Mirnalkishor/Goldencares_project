@@ -190,7 +190,7 @@ export default function SiteHeader() {
                   </DropdownMenuItem>
                   {user?.role === "admin" ? (
                     <DropdownMenuItem asChild className="rounded-xl">
-                      <Link to="/admin">Team view</Link>
+                      <Link to="/admin/dashboard">Team view</Link>
                     </DropdownMenuItem>
                   ) : null}
                   <DropdownMenuSeparator />

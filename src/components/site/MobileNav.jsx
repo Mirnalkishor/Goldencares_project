@@ -96,7 +96,7 @@ export default function MobileNav() {
                 </button>
                 {user?.role === "admin" ? (
                   <Link
-                    to="/admin"
+                    to="/admin/dashboard"
                     className="col-span-2 rounded-full bg-secondary px-4 py-3 text-center text-[0.85rem] font-semibold text-primary"
                   >
                     Team view
