@@ -22,13 +22,16 @@ test("caregiver lands on the panel and renders its tabs", async ({ page }) => {
   await page.goto("/account");
   await expect(page).toHaveURL(/\/caregiver$/, { timeout: 20000 });
 
-  for (const name of ["Dashboard", "Bookings", "All orders", "Availability", "Earnings", "Profile"]) {
+  for (const name of ["Dashboard", "Bookings", "Pick order", "Availability", "Earnings", "Profile"]) {
     await expect(page.getByRole("button", { name, exact: true })).toBeVisible();
   }
 
-  await page.getByRole("button", { name: "All orders", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "All orders" })).toBeVisible();
-  await expect(page.getByRole("list", { name: "All orders list" }).getByRole("listitem")).toHaveCount(7);
+  await page.getByRole("button", { name: "Pick order", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Pick order" })).toBeVisible();
+  const pickList = page.getByRole("list", { name: "Pick order list" });
+  const count = await pickList.getByRole("listitem").count();
+  expect(count).toBeLessThanOrEqual(7);
+  await expect(pickList.getByText(/₹|payout|elder|phone/i)).toHaveCount(0);
 
   await page.getByRole("button", { name: "Availability", exact: true }).click();
   await expect(page.getByText("Duty status")).toBeVisible();

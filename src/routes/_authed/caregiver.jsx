@@ -17,14 +17,12 @@ import {
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import StatusPill from "@/components/site/StatusPill";
-import AllOrdersTab from "@/components/caregiver/AllOrdersTab";
+import PickOrderTab from "@/components/caregiver/PickOrderTab";
 import AvailabilityTab from "@/components/caregiver/AvailabilityTab";
 import BookingsTab from "@/components/caregiver/BookingsTab";
 import EarningsTab from "@/components/caregiver/EarningsTab";
 import ProfileTab from "@/components/caregiver/ProfileTab";
 import {
-  bookingDateValue,
-  bookingServiceName,
   formatBookingDate,
   formatLedgerDate,
   isPermissionError,
@@ -42,7 +40,7 @@ export const Route = createFileRoute("/_authed/caregiver")({
 const TABS = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "bookings", label: "Bookings", icon: CalendarDays },
-  { id: "orders", label: "All orders", icon: ClipboardList },
+  { id: "orders", label: "Pick order", icon: ClipboardList },
   { id: "availability", label: "Availability", icon: Clock3 },
   { id: "earnings", label: "Earnings", icon: Wallet },
   { id: "profile", label: "Profile", icon: UserRound },
@@ -69,15 +67,6 @@ async function loadAssignedBookings(uid) {
   const unique = new Map();
   for (const booking of [...byPersonnel, ...byCaregiver]) unique.set(booking.id, booking);
   return sortByDate([...unique.values()]);
-}
-
-async function loadAllBookings() {
-  try {
-    const page = await base44.entities.BookingRequest.filter({}, { sort: "-createdAt", limit: 7 });
-    return { items: page.items || [], denied: false };
-  } catch (error) {
-    return { items: [], denied: isPermissionError(error) };
-  }
 }
 
 async function loadLedger(entityName, field, uid) {
@@ -115,8 +104,6 @@ function CaregiverPage() {
   const [profile, setProfile] = useState(null);
   const [personnel, setPersonnel] = useState(null);
   const [bookings, setBookings] = useState(null);
-  const [allBookings, setAllBookings] = useState(null);
-  const [allBookingsDenied, setAllBookingsDenied] = useState(false);
   const [earnings, setEarnings] = useState(null);
   const [payouts, setPayouts] = useState(null);
   const [earningsDenied, setEarningsDenied] = useState(false);
@@ -136,18 +123,15 @@ function CaregiverPage() {
       base44.entities.User.get(user.id).catch(() => null),
       base44.entities.CaregiverApplication.get(user.id).catch(() => null),
       loadAssignedBookings(user.id),
-      loadAllBookings(),
       loadLedger("earnings", "caregiverId", user.id),
       loadLedger("payoutRequests", "caregiverId", user.id),
       loadNotifications(user.id),
     ])
-      .then(([profileDoc, personnelDoc, assigned, allOrders, ledger, payoutPage, noticePage]) => {
+      .then(([profileDoc, personnelDoc, assigned, ledger, payoutPage, noticePage]) => {
         if (!active) return;
         setProfile(profileDoc);
         setPersonnel(personnelDoc);
         setBookings(assigned);
-        setAllBookings(allOrders.items);
-        setAllBookingsDenied(allOrders.denied);
         setEarnings(ledger.items);
         setEarningsDenied(ledger.denied);
         setPayouts(payoutPage.items);
@@ -314,14 +298,12 @@ function CaregiverPage() {
         <DashboardTab
           personnel={personnel}
           bookings={bookings}
-          allBookings={allBookings}
           upcoming={upcoming}
           nextVisit={nextVisit}
           completedCount={completed.length}
           availablePaise={availablePaise}
           notifications={notifications}
           onOpenBookings={() => setTab("bookings")}
-          onOpenOrders={() => setTab("orders")}
           onOpenAvailability={() => setTab("availability")}
           onOpenEarnings={() => setTab("earnings")}
           onMarkRead={markNotificationRead}
@@ -329,7 +311,12 @@ function CaregiverPage() {
         />
       ) : null}
       {tab === "bookings" ? <BookingsTab bookings={bookings} onChanged={reloadData} /> : null}
-      {tab === "orders" ? <AllOrdersTab bookings={allBookings} denied={allBookingsDenied} /> : null}
+      {tab === "orders" ? (
+        <PickOrderTab
+          onChanged={reloadData}
+          onOpenBookings={() => setTab("bookings")}
+        />
+      ) : null}
       {tab === "availability" ? (
         <AvailabilityTab
           key={`availability-${reload}`}
@@ -366,14 +353,12 @@ function CaregiverPage() {
 function DashboardTab({
   personnel,
   bookings,
-  allBookings,
   upcoming,
   nextVisit,
   completedCount,
   availablePaise,
   notifications,
   onOpenBookings,
-  onOpenOrders,
   onOpenAvailability,
   onOpenEarnings,
   onMarkRead,
@@ -426,37 +411,6 @@ function DashboardTab({
           <p className="mt-4 text-[0.88rem] leading-relaxed text-muted-foreground">
             No upcoming visits yet. Keep your availability on so you can be matched with families nearby.
           </p>
-        )}
-      </section>
-
-      <section className="rounded-[1.5rem] border border-border bg-card p-6">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <ClipboardList className="h-5 w-5 text-primary" />
-            <h2 className="font-heading text-[1.35rem] text-foreground">Latest orders</h2>
-          </div>
-          <button type="button" onClick={onOpenOrders} className="text-[0.84rem] font-semibold text-primary">
-            View all <ArrowRight className="inline h-3.5 w-3.5" />
-          </button>
-        </div>
-        {allBookings === null ? (
-          <div className="mt-4 h-24 animate-pulse rounded-xl bg-secondary/50" />
-        ) : allBookings.length === 0 ? (
-          <p className="mt-4 text-[0.88rem] text-muted-foreground">No orders have been placed yet.</p>
-        ) : (
-          <ul className="mt-4 space-y-2">
-            {allBookings.slice(0, 3).map((booking) => (
-              <li key={booking.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-secondary/40 p-3">
-                <div>
-                  <p className="text-[0.88rem] font-semibold text-foreground">{bookingServiceName(booking)}</p>
-                  <p className="text-[0.78rem] text-muted-foreground">
-                    {formatBookingDate(bookingDateValue(booking))} · {booking.city || "City to confirm"}
-                  </p>
-                </div>
-                <StatusPill status={booking.status} />
-              </li>
-            ))}
-          </ul>
         )}
       </section>
 
