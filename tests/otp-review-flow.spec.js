@@ -39,9 +39,11 @@ test("family and caregiver complete the OTP journey, then the family reviews", a
 
     const familyJourney = familyCard(family).locator("[data-testid='booking-journey']");
     await expect(familyJourney).toBeVisible({ timeout: 20000 });
-    await familyJourney.getByRole("button", { name: "Show arrival code" }).click();
     const arrivalCode = (await familyJourney.locator("[data-testid='arrival-code']").textContent()).trim();
     expect(arrivalCode).toBe("728988");
+    await expect(
+      familyJourney.getByRole("button", { name: /Show code again|Get a new code|Show arrival code/ }),
+    ).toHaveCount(0);
 
     await login(caregiver, CAREGIVER_EMAIL, CAREGIVER_PASSWORD, /\/caregiver$/);
     await caregiver.getByRole("button", { name: "Bookings", exact: true }).click();
@@ -54,14 +56,13 @@ test("family and caregiver complete the OTP journey, then the family reviews", a
     await family.reload();
     await family.getByRole("button", { name: "Bookings", exact: true }).click();
     const completionJourney = familyCard(family).locator("[data-testid='booking-journey']");
-    await expect(
-      completionJourney.getByRole("button", { name: "Show completion code" }),
-    ).toBeVisible({ timeout: 20000 });
-    await completionJourney.getByRole("button", { name: "Show completion code" }).click();
     const completionCode = (
       await completionJourney.locator("[data-testid='completion-code']").textContent()
     ).trim();
     expect(completionCode).toBe("728988");
+    await expect(
+      completionJourney.getByRole("button", { name: /Show code again|Get a new code|Show completion code/ }),
+    ).toHaveCount(0);
 
     await caregiver.reload();
     await caregiver.getByRole("button", { name: "Bookings", exact: true }).click();

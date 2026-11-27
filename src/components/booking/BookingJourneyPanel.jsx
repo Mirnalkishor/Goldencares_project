@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   CheckCircle2,
   ClipboardCheck,
@@ -15,12 +15,9 @@ import {
   todayIstKey,
 } from "@/components/caregiver/utils";
 
+const SERVICE_CODE = "728988";
 const START_STATUSES = new Set(["new", "confirmed", "upcoming", "scheduled"]);
 const COMPLETE_STATUSES = new Set(["in_progress", "completion_requested"]);
-
-function serviceName(booking) {
-  return booking?.service_name || booking?.serviceName || "Companion visit";
-}
 
 function caregiverName(booking) {
   return booking?.servicePersonnelName || booking?.caregiverName || "Your caregiver";
@@ -31,6 +28,12 @@ function codeTime(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
   return date.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+}
+
+function otpReady(hash, expiresAt) {
+  if (!hash || !expiresAt) return false;
+  const expiry = new Date(expiresAt).getTime();
+  return Number.isFinite(expiry) && expiry > Date.now();
 }
 
 function Stars({ value }) {
@@ -48,20 +51,57 @@ function friendlyError(error, fallback) {
   return raw.replace(/\s*\[\d{3}\]\s*$/, "");
 }
 
+function CodeRow({ code, testId, expiresAt, caregiver, copy }) {
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl bg-card px-4 py-3">
+      <span
+        data-testid={testId}
+        className="font-mono text-[1.6rem] font-semibold tracking-[0.35em] text-foreground"
+      >
+        {code}
+      </span>
+      <button
+        type="button"
+        onClick={() => copy(code)}
+        className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[0.78rem] font-semibold text-muted-foreground hover:text-foreground"
+      >
+        <Copy className="h-3.5 w-3.5" /> Copy
+      </button>
+      {expiresAt ? (
+        <span className="text-[0.75rem] text-muted-foreground">Valid until {codeTime(expiresAt)}</span>
+      ) : null}
+      <span className="w-full text-[0.76rem] text-muted-foreground">
+        Share this code with {caregiver}.
+      </span>
+    </div>
+  );
+}
+
+function UnavailableCode({ testId, title, message }) {
+  return (
+    <div
+      data-testid={testId}
+      className="mt-3 rounded-xl border border-dashed border-border bg-card p-3.5"
+    >
+      <p className="text-[0.84rem] font-semibold text-foreground">{title}</p>
+      <p className="mt-1 text-[0.8rem] leading-relaxed text-muted-foreground">{message}</p>
+    </div>
+  );
+}
+
 export default function BookingJourneyPanel({ booking, onChanged }) {
-  const [startCode, setStartCode] = useState(null);
-  const [completionCode, setCompletionCode] = useState(null);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [reviewDone, setReviewDone] = useState(Boolean(booking?.reviewSubmitted));
   const [rating, setRating] = useState(Number(booking?.reviewRating) || 0);
   const [comment, setComment] = useState(booking?.reviewComment || "");
+  const primed = useRef(new Set());
 
   const status = booking?.status || "";
   const assigned = Boolean(booking?.servicePersonnelId || booking?.caregiverId);
-  const showStartSection = assigned && START_STATUSES.has(status);
-  const showCompletionSection = assigned && COMPLETE_STATUSES.has(status);
+  const showStart = assigned && START_STATUSES.has(status);
+  const showCompletion = assigned && COMPLETE_STATUSES.has(status);
   const showReview = status === "completed" && assigned;
   const bookingDate = bookingDateValue(booking);
   const visitDateLabel = formatBookingDate(bookingDate);
@@ -73,46 +113,53 @@ export default function BookingJourneyPanel({ booking, onChanged }) {
     if (booking?.reviewComment) setComment(booking.reviewComment);
   }, [booking?.reviewSubmitted, booking?.reviewRating, booking?.reviewComment]);
 
+  // The code itself is fixed, but the server still needs an active hashed OTP
+  // to verify. Prime it silently for bookings assigned before this flow existed.
   useEffect(() => {
-    if (!START_STATUSES.has(status)) setStartCode(null);
-  }, [status]);
-
-  useEffect(() => {
-    if (status === "completed") setCompletionCode(null);
-  }, [status]);
-
-  if (!showStartSection && !showCompletionSection && !showReview) return null;
-
-  async function generate(kind) {
-    setBusy(kind);
-    setError("");
-    setNotice("");
-    try {
-      const callable = kind === "start" ? "generateStartOtp" : "generateCompletionOtp";
-      const result = await base44.functions.invoke(callable, { bookingId: booking.id });
-      if (!result?.otp) throw new Error("We could not create a code. Please try again.");
-      const code = { code: result.otp, expiresAt: result.expiresAt };
-      if (kind === "start") setStartCode(code);
-      else setCompletionCode(code);
-      if (kind === "completion") onChanged?.();
-      setNotice(
-        `${kind === "start" ? "Arrival" : "Completion"} code ready. Share it with ${caregiverName(booking)}.`,
-      );
-    } catch (generateError) {
-      const message = friendlyError(
-        generateError,
-        "We could not create that code. Please try again.",
-      );
-      if (/booking day|on the day/i.test(message)) {
-        const label = kind === "start" ? "arrival" : "completion";
-        setError(`Your ${label} code will appear here on ${visitDateLabel}.`);
-      } else {
-        setError(message);
-      }
-    } finally {
-      setBusy("");
+    if (
+      !showStart ||
+      !startsToday ||
+      otpReady(booking?.startOtpHash, booking?.startOtpExpiresAt)
+    ) {
+      return;
     }
-  }
+    const key = `start:${booking.id}:${status}`;
+    if (primed.current.has(key)) return;
+    primed.current.add(key);
+    base44.functions.invoke("generateStartOtp", { bookingId: booking.id }).catch(() => {});
+  }, [
+    booking?.id,
+    booking?.startOtpExpiresAt,
+    booking?.startOtpHash,
+    showStart,
+    startsToday,
+    status,
+  ]);
+
+  // verifyStartOtp primes the completion OTP. This is only a fallback for
+  // visits that were already in progress before that server change.
+  useEffect(() => {
+    if (
+      !showCompletion ||
+      !startsToday ||
+      otpReady(booking?.completionOtpHash, booking?.completionOtpExpiresAt)
+    ) {
+      return;
+    }
+    const key = `completion:${booking.id}:${status}`;
+    if (primed.current.has(key)) return;
+    primed.current.add(key);
+    base44.functions.invoke("generateCompletionOtp", { bookingId: booking.id }).catch(() => {});
+  }, [
+    booking?.id,
+    booking?.completionOtpExpiresAt,
+    booking?.completionOtpHash,
+    showCompletion,
+    startsToday,
+    status,
+  ]);
+
+  if (!showStart && !showCompletion && !showReview) return null;
 
   async function copy(code) {
     try {
@@ -156,148 +203,64 @@ export default function BookingJourneyPanel({ booking, onChanged }) {
       data-testid="booking-journey"
       className="mt-4 rounded-2xl border border-primary/20 bg-primary/5 p-4"
     >
-      {showStartSection ? (
+      {showStart ? (
         <div className="border-b border-primary/15 pb-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="inline-flex items-center gap-2 font-semibold text-foreground">
-                <ClipboardCheck className="h-4 w-4 text-primary" /> Arrival code
-              </p>
-              <p className="mt-1 text-[0.84rem] leading-relaxed text-muted-foreground">
-                Share this code when {caregiverName(booking)} arrives. They enter it in their panel
-                to start the visit.
-              </p>
-            </div>
-            {startCode ? (
-              <span className="text-[0.75rem] text-muted-foreground">
-                Valid until {codeTime(startCode.expiresAt)}
-              </span>
-            ) : null}
-          </div>
+          <p className="inline-flex items-center gap-2 font-semibold text-foreground">
+            <ClipboardCheck className="h-4 w-4 text-primary" /> Arrival code
+          </p>
+          <p className="mt-1 text-[0.84rem] leading-relaxed text-muted-foreground">
+            Share this code when {caregiverName(booking)} arrives. They enter it in their panel to
+            start the visit.
+          </p>
 
-          {startCode ? (
-            <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl bg-card px-4 py-3">
-              <span
-                data-testid="arrival-code"
-                className="font-mono text-[1.6rem] font-semibold tracking-[0.35em] text-foreground"
-              >
-                {startCode.code}
-              </span>
-              <button
-                type="button"
-                onClick={() => copy(startCode.code)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[0.78rem] font-semibold text-muted-foreground hover:text-foreground"
-              >
-                <Copy className="h-3.5 w-3.5" /> Copy
-              </button>
-              <button
-                type="button"
-                disabled={Boolean(busy)}
-                onClick={() => generate("start")}
-                className="text-[0.78rem] font-semibold text-primary underline disabled:opacity-50"
-              >
-                {busy === "start" ? "Refreshing…" : "Show code again"}
-              </button>
-            </div>
-          ) : startsToday ? (
-            <button
-              type="button"
-              disabled={Boolean(busy)}
-              onClick={() => generate("start")}
-              className="mt-3 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-[0.82rem] font-semibold text-primary-foreground disabled:opacity-50"
-            >
-              {busy === "start" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Show arrival code
-            </button>
+          {startsToday ? (
+            <CodeRow
+              code={SERVICE_CODE}
+              testId="arrival-code"
+              expiresAt={booking.startOtpExpiresAt}
+              caregiver={caregiverName(booking)}
+              copy={copy}
+            />
           ) : (
-            <div
-              data-testid="arrival-code-unavailable"
-              className="mt-3 rounded-xl border border-dashed border-border bg-card p-3.5"
-            >
-              <p className="text-[0.84rem] font-semibold text-foreground">
-                Arrival code unlocks on your visit day
-              </p>
-              <p className="mt-1 text-[0.8rem] leading-relaxed text-muted-foreground">
-                We’ll show it here on {visitDateLabel}. Share it with {caregiverName(booking)} when
-                they arrive.
-              </p>
-            </div>
+            <UnavailableCode
+              testId="arrival-code-unavailable"
+              title="Arrival code unlocks on your visit day"
+              message={`We’ll show it here on ${visitDateLabel}. Share it with ${caregiverName(booking)} when they arrive.`}
+            />
           )}
         </div>
       ) : null}
 
-      {showCompletionSection ? (
-        <div className={showStartSection ? "pt-4" : ""}>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="inline-flex items-center gap-2 font-semibold text-foreground">
-                <ShieldCheck className="h-4 w-4 text-primary" /> Completion code
-              </p>
-              <p className="mt-1 text-[0.84rem] leading-relaxed text-muted-foreground">
-                Share this only when the visit is finished. {caregiverName(booking)} enters it to
-                mark the job complete.
-              </p>
-            </div>
-            {completionCode ? (
-              <span className="text-[0.75rem] text-muted-foreground">
-                Valid until {codeTime(completionCode.expiresAt)}
-              </span>
-            ) : null}
-          </div>
+      {showCompletion ? (
+        <div className={showStart ? "pt-4" : ""}>
+          <p className="inline-flex items-center gap-2 font-semibold text-foreground">
+            <ShieldCheck className="h-4 w-4 text-primary" /> Completion code
+          </p>
+          <p className="mt-1 text-[0.84rem] leading-relaxed text-muted-foreground">
+            Share this only when the visit is finished. {caregiverName(booking)} enters it to mark
+            the job complete.
+          </p>
 
-          {completionCode ? (
-            <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl bg-card px-4 py-3">
-              <span
-                data-testid="completion-code"
-                className="font-mono text-[1.6rem] font-semibold tracking-[0.35em] text-foreground"
-              >
-                {completionCode.code}
-              </span>
-              <button
-                type="button"
-                onClick={() => copy(completionCode.code)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[0.78rem] font-semibold text-muted-foreground hover:text-foreground"
-              >
-                <Copy className="h-3.5 w-3.5" /> Copy
-              </button>
-              <button
-                type="button"
-                disabled={Boolean(busy)}
-                onClick={() => generate("completion")}
-                className="text-[0.78rem] font-semibold text-primary underline disabled:opacity-50"
-              >
-                {busy === "completion" ? "Refreshing…" : "Show code again"}
-              </button>
-            </div>
-          ) : startsToday ? (
-            <button
-              type="button"
-              disabled={Boolean(busy)}
-              onClick={() => generate("completion")}
-              className="mt-3 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-[0.82rem] font-semibold text-primary-foreground disabled:opacity-50"
-            >
-              {busy === "completion" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Show completion code
-            </button>
+          {startsToday ? (
+            <CodeRow
+              code={SERVICE_CODE}
+              testId="completion-code"
+              expiresAt={booking.completionOtpExpiresAt}
+              caregiver={caregiverName(booking)}
+              copy={copy}
+            />
           ) : (
-            <div
-              data-testid="completion-code-unavailable"
-              className="mt-3 rounded-xl border border-dashed border-border bg-card p-3.5"
-            >
-              <p className="text-[0.84rem] font-semibold text-foreground">
-                Completion code unlocks on your visit day
-              </p>
-              <p className="mt-1 text-[0.8rem] leading-relaxed text-muted-foreground">
-                We’ll show it here on {visitDateLabel}. Share it with {caregiverName(booking)} only
-                when the visit has finished.
-              </p>
-            </div>
+            <UnavailableCode
+              testId="completion-code-unavailable"
+              title="Completion code unlocks on your visit day"
+              message={`We’ll show it here on ${visitDateLabel}. Share it with ${caregiverName(booking)} only when the visit has finished.`}
+            />
           )}
         </div>
       ) : null}
 
       {showReview ? (
-        <div className={showStartSection || showCompletionSection ? "mt-4 border-t border-primary/15 pt-4" : ""}>
+        <div className={showStart || showCompletion ? "mt-4 border-t border-primary/15 pt-4" : ""}>
           {reviewDone || booking.reviewSubmitted ? (
             <div className="rounded-xl bg-card p-4">
               <p className="inline-flex items-center gap-2 font-semibold text-foreground">

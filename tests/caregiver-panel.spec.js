@@ -57,7 +57,9 @@ test("future bookings explain when the arrival code will appear", async ({ page 
   await login(page, FAMILY_EMAIL, FAMILY_PASSWORD);
   await page.getByRole("button", { name: "Bookings", exact: true }).click();
 
-  const upcomingCode = page.locator("[data-testid='arrival-code-unavailable']").first();
+  const futureCard = page.getByRole("listitem").filter({ hasText: "Future arrival code verification" });
+  const upcomingCode = futureCard.locator("[data-testid='arrival-code-unavailable']");
   await expect(upcomingCode).toBeVisible({ timeout: 20000 });
   await expect(upcomingCode).toContainText("Arrival code unlocks on your visit day");
+  await expect(futureCard.locator("[data-testid='arrival-code']")).toHaveCount(0);
 });
