@@ -1,53 +1,99 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, Banknote, Check, Clock, PhoneCall } from "lucide-react";
+import { ArrowRight, Banknote, Check, Clock, Loader2, Lock, PhoneCall } from "lucide-react";
+import { useEffect, useState } from "react";
+import { base44 } from "@/api/base44Client";
 import { formatDate, formatDuration } from "@/lib/format";
-import { serviceBySlug } from "@/lib/services";
+import { openRazorpayCheckout, paymentErrorMessage } from "@/lib/razorpay";
+import { getServicePriceInr, serviceBySlug } from "@/lib/services";
 import { CONTACT } from "@/lib/site";
-import { getVisitPriceInr } from "@/lib/payu";
-import { useState } from "react";
+
+const PAYING_STATES = new Set(["starting", "awaiting", "verifying"]);
 
 export default function BookingConfirmed({
   form,
   isAuthenticated,
   bookingId,
-  paymentToken,
   paymentMethod,
   onReset,
 }) {
   const service = serviceBySlug(form.service_slug);
-  const [checkout, setCheckout] = useState(null);
-  const [paymentError, setPaymentError] = useState("");
-  const [paying, setPaying] = useState(false);
-  const amountInr = getVisitPriceInr(form.duration_hours);
+  const [paymentState, setPaymentState] = useState("idle");
+  const [paymentMessage, setPaymentMessage] = useState("");
+  const [transactionId, setTransactionId] = useState("");
+  const amountInr = getServicePriceInr(form.service_slug, form.duration_hours);
   const isCod = paymentMethod === "cod";
+  const paying = PAYING_STATES.has(paymentState);
+
+  useEffect(() => {
+    if (!isCod && amountInr === null) {
+      setPaymentMessage("We could not confirm the price for this service. Please contact support before paying.");
+    }
+  }, [amountInr, isCod]);
 
   async function beginPayment() {
-    setPaying(true);
-    setPaymentError("");
+    if (!amountInr) {
+      setPaymentMessage("We could not confirm the price for this service. Please contact support before paying.");
+      return;
+    }
+    setPaymentState("starting");
+    setPaymentMessage("");
     try {
-      const response = await fetch("/api/payu/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bookingId, token: paymentToken }),
+      const order = await base44.functions.invoke("createRazorpayOrder", { bookingId });
+      if (!order?.orderId || !order?.keyId || !Number.isFinite(Number(order.amount))) {
+        throw new Error("The payment service returned an incomplete order. Please try again.");
+      }
+      setTransactionId(order.transactionId || "");
+      setPaymentState("awaiting");
+
+      await openRazorpayCheckout({
+        keyId: order.keyId,
+        orderId: order.orderId,
+        amountPaise: order.amount,
+        description: `${service?.name || form.service_name || "Companion visit"} · ${formatDuration(form.duration_hours)}`,
+        customerName: form.full_name,
+        email: form.email,
+        phone: form.phone,
+        onDismiss: () => {
+          setPaymentState("idle");
+          setPaymentMessage("Payment was cancelled. You can try again whenever you are ready.");
+        },
+        onFailure: (message) => {
+          setPaymentState("error");
+          setPaymentMessage(message || "Payment failed. Please try again.");
+        },
+        onSuccess: async ({ paymentId, orderId, signature }) => {
+          if (!paymentId || !signature) {
+            setPaymentState("error");
+            setPaymentMessage("Razorpay did not return a payment signature. Please contact support with your booking details.");
+            return;
+          }
+          setPaymentState("verifying");
+          setPaymentMessage("");
+          try {
+            const result = await base44.functions.invoke("verifyRazorpayPayment", {
+              transactionId: order.transactionId,
+              orderId,
+              paymentId,
+              signature,
+            });
+            if (result?.success) {
+              setPaymentState("success");
+              setPaymentMessage(result.message || "Payment verified. Your booking is confirmed.");
+            } else {
+              setPaymentState("error");
+              setPaymentMessage("We could not verify this payment. Please contact support with your booking details.");
+            }
+          } catch (error) {
+            setPaymentState("error");
+            setPaymentMessage(
+              "Razorpay received your payment, but we could not verify it automatically. Please contact support with your booking details so we can confirm it manually."
+            );
+          }
+        },
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "We could not start the payment.");
-      if (!["https://test.payu.in/_payment", "https://secure.payu.in/_payment"].includes(data.action)) {
-        throw new Error("The payment service returned an invalid checkout destination.");
-      }
-      setCheckout(data);
-      try {
-        sessionStorage.setItem(
-          `goldencares-payment-${data.attemptId}`,
-          JSON.stringify({ bookingId, token: paymentToken }),
-        );
-      } catch {
-        setPaymentError("Your browser cannot save a retry session. You can still continue to PayU.");
-      }
     } catch (error) {
-      setPaymentError(error.message || "We could not start the payment.");
-    } finally {
-      setPaying(false);
+      setPaymentState("error");
+      setPaymentMessage(paymentErrorMessage(error));
     }
   }
 
@@ -68,12 +114,14 @@ export default function BookingConfirmed({
         <dl className="space-y-3 text-[0.92rem]">
           <div className="flex justify-between gap-4">
             <dt className="text-muted-foreground">Quoted price</dt>
-            <dd className="text-right font-semibold text-foreground">₹{amountInr}</dd>
+            <dd className="text-right font-semibold text-foreground">
+              {amountInr === null ? "See quote in booking" : `₹${amountInr}`}
+            </dd>
           </div>
           <div className="flex justify-between gap-4">
             <dt className="text-muted-foreground">Payment method</dt>
             <dd className="text-right font-medium text-foreground">
-              {isCod ? "Cash on delivery" : "Online · PayU"}
+              {isCod ? "Cash on delivery" : "Online · Razorpay"}
             </dd>
           </div>
           <div className="flex justify-between gap-4">
@@ -116,10 +164,10 @@ export default function BookingConfirmed({
       {isCod ? (
         <div className="mt-6 rounded-xl border border-primary/20 bg-primary/5 p-4">
           <p className="inline-flex items-center gap-2 text-[0.9rem] font-semibold text-foreground">
-            <Banknote className="h-4 w-4 text-primary" /> Pay ₹{amountInr} at the visit
+            <Banknote className="h-4 w-4 text-primary" /> Pay ₹{amountInr ?? "the quoted amount"} at the visit
           </p>
           <p className="mt-1 text-[0.82rem] leading-relaxed text-muted-foreground">
-            You’ve chosen cash on delivery. Please keep ₹{amountInr} ready and pay the companion after the
+            You’ve chosen cash on delivery. Please keep the quoted amount ready and pay the companion after the
             visit is complete. No online payment is needed.
           </p>
           <p className="mt-2 text-[0.8rem] text-muted-foreground">
@@ -128,34 +176,44 @@ export default function BookingConfirmed({
         </div>
       ) : (
         <div className="mt-6 rounded-xl border border-primary/20 bg-primary/5 p-4">
-          <p className="text-[0.9rem] font-semibold text-foreground">Pay securely with PayU</p>
-          <p className="mt-1 text-[0.82rem] leading-relaxed text-muted-foreground">
-            This request is not yet a confirmed visit. You can pay the quoted ₹{amountInr} now; our team will still
-            call to confirm availability and timing.
+          <p className="inline-flex items-center gap-2 text-[0.9rem] font-semibold text-foreground">
+            <Lock className="h-4 w-4 text-primary" /> Pay securely with Razorpay
           </p>
-          {paymentError ? (
-            <p role="alert" className="mt-3 text-[0.85rem] text-destructive">{paymentError}</p>
+          <p className="mt-1 text-[0.82rem] leading-relaxed text-muted-foreground">
+            {paymentState === "success"
+              ? "Payment received. Your booking is confirmed and our team will call you before the visit."
+              : "This request is not yet a confirmed visit. Pay the quoted amount now; our team will still call to confirm availability and timing."}
+          </p>
+
+          {paymentMessage ? (
+            <p role="status" className={`mt-3 text-[0.85rem] ${paymentState === "error" ? "text-destructive" : "text-foreground"}`}>
+              {paymentMessage}
+            </p>
           ) : null}
-          {checkout ? (
-            <form action={checkout.action} method="post" className="mt-4">
-              {Object.entries(checkout.fields).map(([name, value]) => (
-                <input key={name} type="hidden" name={name} value={value} />
-              ))}
-              <button
-                type="submit"
-                className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-[0.9rem] font-semibold text-primary-foreground"
-              >
-                Continue to PayU
-              </button>
-            </form>
+
+          {transactionId && paymentState === "error" ? (
+            <p className="mt-2 text-[0.78rem] text-muted-foreground">Payment reference: {transactionId}</p>
+          ) : null}
+
+          {paymentState === "success" ? (
+            <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-[0.88rem] font-semibold text-primary-foreground">
+              <Check className="h-4 w-4" /> Payment confirmed
+            </div>
           ) : (
             <button
               type="button"
               onClick={beginPayment}
-              disabled={paying}
-              className="mt-4 inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-[0.9rem] font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-70"
+              disabled={paying || amountInr === null}
+              className="mt-4 inline-flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-[0.9rem] font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-70"
             >
-              {paying ? "Preparing secure payment…" : `Pay ₹${amountInr} securely`}
+              {paying ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {paymentState === "verifying" ? "Verifying payment…" : "Opening secure checkout…"}
+                </>
+              ) : (
+                `Pay ${amountInr === null ? "" : `₹${amountInr} `}securely`
+              )}
             </button>
           )}
         </div>

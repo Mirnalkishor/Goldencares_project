@@ -12,10 +12,13 @@ import {
 export const services = [
   {
     slug: "temple-visit",
+    serviceId: "1",
     name: "Temple Visit",
     category: "Faith & community",
     icon: Landmark,
     durations: [1, 2, 3],
+    prices: { 1: 499, 2: 699, 3: 899 },
+    durationLabels: { 1: "1 hours", 2: "2 hours", 3: "3 hours" },
     benefit: "Faith and peace, without the logistics.",
     intro:
       "A companion accompanies your parent to the temple or spiritual centre they love, arranges the auto or cab, walks at their pace, and stays close through the whole visit.",
@@ -29,10 +32,13 @@ export const services = [
   },
   {
     slug: "shopping-and-grocery",
+    serviceId: "2",
     name: "Shopping & Grocery",
     category: "Everyday help",
     icon: ShoppingBag,
     durations: [1, 2, 3],
+    prices: { 1: 499, 2: 699, 3: 899 },
+    durationLabels: { 1: "1 hours", 2: "2 hours", 3: "3 hours" },
     benefit: "Independence, with a steady hand nearby.",
     intro:
       "Help with the daily or weekly shop, so your parent keeps choosing what goes into their kitchen — with someone patient carrying the bags and checking the bill.",
@@ -46,10 +52,13 @@ export const services = [
   },
   {
     slug: "regional-and-community-visit",
+    serviceId: "3",
     name: "Community & Regional Visits",
     category: "Faith & community",
     icon: Users,
     durations: [1, 2, 3],
+    prices: { 1: 499, 2: 699, 3: 899 },
+    durationLabels: { 1: "1 hours", 2: "2 hours", 3: "3 hours" },
     benefit: "A place in the community, kept alive.",
     intro:
       "Society functions, cultural programmes, kitty lunches and neighbourhood gatherings — your parent attends, and stays part of the life around them.",
@@ -63,10 +72,13 @@ export const services = [
   },
   {
     slug: "evening-outing",
+    serviceId: "4",
     name: "Evening Outing",
     category: "Joy & company",
     icon: Sunset,
     durations: [1, 2, 3],
+    prices: { 1: 499, 2: 699, 3: 899 },
+    durationLabels: { 1: "1 hour", 2: "2 hours", 3: "3 hours" },
     benefit: "Fresh air and a change of scene.",
     intro:
       "A park, a lake, a favourite spot nearby. An unhurried hour outdoors does more for mood than almost anything else we do.",
@@ -80,10 +92,13 @@ export const services = [
   },
   {
     slug: "doctor-visit",
+    serviceId: "5",
     name: "Doctor Visit",
     category: "Health & appointments",
     icon: Stethoscope,
     durations: [1, 2, 3],
+    prices: { 1: 499, 2: 699, 3: 899 },
+    durationLabels: { 1: "1 hours", 2: "2 hours", 3: "3 hours" },
     benefit: "A calm companion at appointments.",
     intro:
       "Clinics are confusing and waiting rooms are tiring. A companion handles the travel, the queue and the notes, so your parent is never alone at an appointment.",
@@ -97,10 +112,13 @@ export const services = [
   },
   {
     slug: "movie-and-theatre",
+    serviceId: "6",
     name: "Movie & Theatre",
     category: "Joy & company",
     icon: Clapperboard,
     durations: [2, 3],
+    prices: { 2: 599, 3: 699 },
+    durationLabels: { 2: "2 hours", 3: "3 hours" },
     benefit: "A good story, shared.",
     intro:
       "A film or a live performance, with the tickets, the timing and the interval breaks all taken care of.",
@@ -114,10 +132,13 @@ export const services = [
   },
   {
     slug: "morning-and-evening-walking",
+    serviceId: "7",
     name: "Morning & Evening Walks",
     category: "Health & appointments",
     icon: Footprints,
     durations: [1, 2, 3],
+    prices: { 1: 499, 2: 599, 3: 699 },
+    durationLabels: { 1: "1 hours", 2: "2 hours", 3: "3 hours" },
     benefit: "A walking habit that actually holds.",
     intro:
       "A steady companion at a fixed time, so the daily walk happens safely and consistently — the smallest service we offer, and often the one families notice most.",
@@ -131,10 +152,13 @@ export const services = [
   },
   {
     slug: "assistant-in-online-activity",
+    serviceId: "8",
     name: "Online & Phone Assistance",
     category: "Everyday help",
     icon: Smartphone,
     durations: [1, 2, 3],
+    prices: { 1: 499, 2: 599, 3: 699 },
+    durationLabels: { 1: "1 hour", 2: "2 hours", 3: "3 hours" },
     benefit: "Family on the other side of the screen.",
     intro:
       "Video calls, bill payments, forms and photos — technology made calm and safe, with a companion sitting alongside and explaining as they go.",
@@ -149,3 +173,16 @@ export const services = [
 ];
 
 export const serviceBySlug = (slug) => services.find((service) => service.slug === slug);
+
+// Prices and duration labels mirror the live Firestore `services` documents.
+// The Razorpay callable re-checks them server-side, so these must stay in sync
+// with the backend pricing screen.
+export function getServicePriceInr(slug, durationHours) {
+  const service = serviceBySlug(slug);
+  return service?.prices?.[Number(durationHours)] ?? null;
+}
+
+export function getServiceDurationLabel(slug, durationHours) {
+  const service = serviceBySlug(slug);
+  return service?.durationLabels?.[Number(durationHours)] ?? `${Number(durationHours)} hours`;
+}

@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
-import { serviceBySlug } from "@/lib/services";
-import { createPaymentToken, getVisitPriceInr, hashPaymentToken } from "@/lib/payu";
+import {
+  getServiceDurationLabel,
+  getServicePriceInr,
+  serviceBySlug,
+} from "@/lib/services";
 import { ArrowLeft, ArrowRight, Loader2, Lock } from "lucide-react";
 import BookingProgress from "./BookingProgress";
 import BookingSummary from "./BookingSummary";
@@ -261,13 +264,18 @@ export default function BookingWizard({ initialService, initialDuration }) {
     try {
       const service = serviceBySlug(form.service_slug);
       const isCod = form.payment_method === "cod";
-      const paymentToken = isCod ? null : createPaymentToken();
-      const paymentTokenHash = paymentToken ? await hashPaymentToken(paymentToken) : null;
+      const duration = Number(form.duration_hours);
+      const priceInr = getServicePriceInr(form.service_slug, duration);
       const payload = {
         request_type: "visit",
         service_name: service?.name || "Companion visit",
-        duration_hours: Number(form.duration_hours),
-        price: getVisitPriceInr(Number(form.duration_hours)),
+        // The Razorpay callables resolve live pricing from `services` using
+        // these fields, so they must be present on every new web booking.
+        serviceId: service?.serviceId || "",
+        serviceName: service?.name || "Companion visit",
+        duration: getServiceDurationLabel(form.service_slug, duration),
+        duration_hours: duration,
+        price: priceInr,
         userId: user.id,
         payment_method: form.payment_method,
         paymentStatus: isCod ? "cod" : "pending_payment",
@@ -292,11 +300,10 @@ export default function BookingWizard({ initialService, initialDuration }) {
         notes: form.notes,
         status: "new",
       };
-      if (paymentTokenHash) payload.payment_token_hash = paymentTokenHash;
       const booking = await base44.entities.BookingRequest.create(payload);
       if (!booking?.id) throw new Error("The booking was saved but no booking reference was returned.");
       setState("idle");
-      setSubmitted({ form, bookingId: booking.id, paymentToken, paymentMethod: form.payment_method });
+      setSubmitted({ form, bookingId: booking.id, paymentMethod: form.payment_method });
     } catch (err) {
       setState("idle");
       setError(err?.message || "We could not send your request. Please try again, or email info@goldencares.in.");
@@ -321,7 +328,6 @@ export default function BookingWizard({ initialService, initialDuration }) {
           form={submitted.form}
           isAuthenticated={isAuthenticated}
           bookingId={submitted.bookingId}
-          paymentToken={submitted.paymentToken}
           paymentMethod={submitted.paymentMethod}
           onReset={reset}
         />

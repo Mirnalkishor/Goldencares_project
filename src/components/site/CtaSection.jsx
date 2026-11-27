@@ -6,7 +6,7 @@ import { CONTACT } from "@/lib/site";
 
 export default function CtaSection({
   title = "Book care today. Peace of mind tonight.",
-  text = "Tell us what your parent needs. See the price before you submit, pay securely with PayU if you choose, and we will call to confirm the visit details.",
+  text = "Tell us what your parent needs. See the price before you submit, pay securely with Razorpay if you choose, and we will call to confirm the visit details.",
   className = "",
 }) {
   return (

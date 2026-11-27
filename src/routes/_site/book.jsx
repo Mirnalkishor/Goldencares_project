@@ -46,8 +46,8 @@ function BookPage() {
             Book care in three minutes.
           </h1>
           <p className="mt-3 max-w-xl text-[1rem] leading-relaxed text-muted-foreground">
-            Sign in or create an account to request care in four short steps. The clear quote is ₹299 for one
-            hour, ₹399 for two, or ₹599 for three; pay securely with PayU if you choose.
+            Sign in or create an account to request care in four short steps. The exact quote for your service
+            and duration appears before you submit; pay securely with Razorpay if you choose.
           </p>
           <div className="mt-5 flex flex-wrap gap-4 text-[0.82rem] text-muted-foreground">
             <span className="inline-flex items-center gap-2">

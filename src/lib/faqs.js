@@ -9,7 +9,7 @@ export const faqs = [
   },
   {
     q: "What does a visit cost?",
-    a: "A one-hour visit is ₹299, two hours are ₹399, and three hours are ₹599. You see the quote before submitting a request and can pay securely online with PayU. A request is not a confirmed appointment until our team calls you.",
+    a: "Prices start at ₹499 for one hour and depend on the service and duration. You see the exact quote before submitting a request and can pay securely online with Razorpay. A request is not a confirmed appointment until our team calls you.",
   },
   {
     q: "Can I cancel or reschedule?",

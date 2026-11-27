@@ -130,7 +130,7 @@ const COLLECTION_MAP = {
   BookingRequest: "bookings",          // original `bookings` (was Base44 `BookingRequest`)
   CaregiverApplication: "servicePersonnel", // original `servicePersonnel` (was Base44 `CaregiverApplication`)
   User: "users",                       // original `users`
-  PaymentAttempt: "transactions",      // original `transactions`; PayU placeholder (not verified)
+  PaymentAttempt: "transactions",      // original `transactions`; Razorpay transactions are written by the backend
 };
 function makeEntities() {
   const store = {};

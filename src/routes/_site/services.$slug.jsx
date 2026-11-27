@@ -95,8 +95,8 @@ function ServiceDetailPage() {
                 </div>
 
                 <p className="mt-4 text-[0.82rem] leading-relaxed text-muted-foreground">
-                  The quote is ₹299 for one hour, ₹399 for two hours, or ₹599 for three hours. You can pay
-                  securely online after submitting your request.
+                  The exact quote for your service and duration appears in the booking form. You can pay
+                  securely online with Razorpay after submitting your request.
                 </p>
               </div>
             </Reveal>

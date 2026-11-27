@@ -1,9 +1,9 @@
 import { Banknote, CreditCard } from "lucide-react";
 import ChoiceCard from "../ChoiceCard";
-import { getVisitPriceInr } from "@/lib/payu";
+import { getServicePriceInr } from "@/lib/services";
 
 export default function StepPayment({ form, setField }) {
-  const amount = getVisitPriceInr(form.duration_hours);
+  const amount = getServicePriceInr(form.service_slug, form.duration_hours);
 
   return (
     <div>
@@ -20,7 +20,7 @@ export default function StepPayment({ form, setField }) {
           onClick={() => setField("payment_method", "online")}
           icon={CreditCard}
           title="Pay online"
-          description="Pay by card or UPI through our secure PayU checkout."
+          description="Pay by card or UPI through our secure Razorpay checkout."
           meta={amount === null ? "Price based on duration" : `₹${amount} now`}
         />
         <ChoiceCard

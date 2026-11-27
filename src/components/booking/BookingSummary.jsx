@@ -1,19 +1,19 @@
 import { Link } from "@tanstack/react-router";
 import { Clock, ShieldCheck } from "lucide-react";
 import { formatDate, formatDuration } from "@/lib/format";
-import { serviceBySlug } from "@/lib/services";
+import { getServicePriceInr, serviceBySlug } from "@/lib/services";
 import { CONTACT } from "@/lib/site";
-import { getVisitPriceInr } from "@/lib/payu";
 
 export default function BookingSummary({ form, steps, current, onJump }) {
   const service = serviceBySlug(form.service_slug);
+  const quote = getServicePriceInr(form.service_slug, form.duration_hours);
 
   const rows = [
     { label: "Service", value: service?.name || "Not chosen", step: 0 },
     { label: "Hours", value: formatDuration(form.duration_hours), step: 1 },
     {
       label: "Quote",
-      value: getVisitPriceInr(form.duration_hours) === null ? "Choose duration" : `₹${getVisitPriceInr(form.duration_hours)}`,
+      value: quote === null ? "Choose duration" : `₹${quote}`,
       step: 1,
     },
     {

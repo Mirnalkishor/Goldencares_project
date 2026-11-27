@@ -22,7 +22,7 @@ const sections = [
     title: "Privacy Policy",
     body: [
       "We collect only what is needed to arrange a companion visit: the name and contact details of the person booking, the senior's city and area, the service requested, and any notes you choose to share.",
-      "Your details are used to contact you about your request, to brief the assigned companion, and to keep a record of the visit. If you choose to pay online, your name, email, phone number and payment amount are sent to PayU to process the transaction. We do not sell personal data or share it for third-party marketing.",
+      "Your details are used to contact you about your request, to brief the assigned companion, and to keep a record of the visit. If you choose to pay online, your name, email, phone number and payment amount are sent to Razorpay to process the transaction. We do not sell personal data or share it for third-party marketing.",
       `You may ask us to correct or delete your information at any time by writing to ${CONTACT.email}.`,
     ],
   },
@@ -31,7 +31,7 @@ const sections = [
     title: "Terms and Conditions",
     body: [
       "GoldenCares provides companionship and assistance services only. We do not offer overnight care, medical or nursing services, or clinical treatment. Our Doctor Visit service is accompaniment to appointments only. For medical needs, please consult healthcare professionals.",
-      "A booking request is not a confirmed appointment. The quoted visit price is ₹299 for one hour, ₹399 for two hours and ₹599 for three hours. You may pay that quote online through PayU; the companion, date and time are still confirmed with you by our team.",
+      "A booking request is not a confirmed appointment. The quoted visit price depends on the service and duration and is shown before you submit. You may pay that quote online through Razorpay; the companion, date and time are still confirmed with you by our team.",
       "Companions are guests in the senior's home. Any behaviour that is unsafe, abusive or unlawful ends the visit immediately, and further bookings may be declined.",
     ],
   },
@@ -48,7 +48,7 @@ const sections = [
     id: "refunds",
     title: "Refund Policy",
     body: [
-      "If you choose to pay online, payments are processed by PayU. For a cancelled visit, contact us at the email below with your booking details so we can review and arrange any applicable refund.",
+      "If you choose to pay online, payments are processed by Razorpay. For a cancelled visit, contact us at the email below with your booking details so we can review and arrange any applicable refund.",
       "If a visit does not take place for a reason on our side, we will reschedule it or refund any amount paid for that visit.",
       "If you cancel with reasonable notice, any amount paid for the cancelled visit is refunded. Write to us and we will confirm the outcome in writing.",
     ],
