@@ -47,7 +47,7 @@ function BookPage() {
           </h1>
           <p className="mt-3 max-w-xl text-[1rem] leading-relaxed text-muted-foreground">
             Sign in or create an account to request care in four short steps. The exact quote for your service
-            and duration appears before you submit; pay securely with Razorpay if you choose.
+            and duration appears before you submit; pay securely with Razorpay to place your request.
           </p>
           <div className="mt-5 flex flex-wrap gap-4 text-[0.82rem] text-muted-foreground">
             <span className="inline-flex items-center gap-2">

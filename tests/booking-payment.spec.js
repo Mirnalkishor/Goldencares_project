@@ -31,15 +31,19 @@ async function goToPaymentStep(page) {
   await page.getByRole("button", { name: "Continue" }).click();
 }
 
-test("a booking cannot be placed until a payment method is chosen", async ({ page }) => {
+test("cash on delivery is temporarily unavailable and online payment is required", async ({ page }) => {
   await signIn(page);
   await goToPaymentStep(page);
 
   await expect(page.getByRole("heading", { name: /How would you like to pay/i })).toBeVisible();
+  const cod = page.getByRole("button", { name: /Cash on delivery/ });
+  await expect(cod).toBeDisabled();
+  await expect(cod).toContainText("Temporarily unavailable");
+
   await page.getByRole("button", { name: /Confirm request/ }).click();
-  await expect(page.getByRole("alert")).toContainText("Choose how you’d like to pay");
+  await expect(page.getByRole("alert")).toContainText("Online payment is required right now");
   await expect(page.getByRole("heading", { name: /How would you like to pay/i })).toBeVisible();
 
-  await page.getByRole("button", { name: /Cash on delivery/ }).click();
-  await expect(page.getByRole("button", { name: /Cash on delivery/ })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: /Pay online/ }).click();
+  await expect(page.getByRole("button", { name: /Pay online/ })).toHaveAttribute("aria-pressed", "true");
 });

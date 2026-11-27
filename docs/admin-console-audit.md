@@ -195,6 +195,7 @@ Implemented after the audit:
 - Caregiver KYC approval, primary-only stats edits, photo upload, deletion override, whitelist CSV bulk upload and reviews.
 - Cursor-paged ledgers with filters and copy actions, including Razorpay transaction IDs and RazorpayX payout references.
 - The old `/admin` link target was replaced with `/admin/dashboard`; stale PayU checkout files/tests were removed in favour of the Razorpay flow.
+- Checkout is online-only for now: COD is disabled through a single `COD_ENABLED` switch, and pre-payment copy no longer says the request is with the team or confirmed.
 
 Remaining: live verification against a real admin account/session. No Playwright or deployment has been run.
 

@@ -6,6 +6,7 @@ import {
   getServicePriceInr,
   serviceBySlug,
 } from "@/lib/services";
+import { COD_ENABLED, isPaymentMethodAvailable } from "@/lib/paymentMethods";
 import { ArrowLeft, ArrowRight, Loader2, Lock } from "lucide-react";
 import BookingProgress from "./BookingProgress";
 import BookingSummary from "./BookingSummary";
@@ -229,8 +230,10 @@ export default function BookingWizard({ initialService, initialDuration }) {
       return "Please choose an available duration for this service.";
     }
     if (index === 2) return validateAddressDraft(form);
-    if (index === 4 && !["online", "cod"].includes(form.payment_method)) {
-      return "Choose how you’d like to pay: online or cash on delivery.";
+    if (index === 4 && !isPaymentMethodAvailable(form.payment_method)) {
+      return COD_ENABLED
+        ? "Choose how you’d like to pay: online or cash on delivery."
+        : "Online payment is required right now. Cash on delivery is temporarily unavailable.";
     }
     return "";
   }

@@ -49,7 +49,7 @@ export default function BookingSummary({ form, steps, current, onJump }) {
   return (
     <aside className="rounded-[1.75rem] border border-border bg-card p-6 lg:sticky lg:top-32">
       <h2 className="font-heading text-[1.3rem] text-foreground">Your request</h2>
-      <p className="mt-1 text-[0.82rem] text-muted-foreground">Choose online payment or cash on delivery.</p>
+      <p className="mt-1 text-[0.82rem] text-muted-foreground">Online payment is required to place your request.</p>
 
       <dl className="mt-5 space-y-3">
         {rows.map((row) => (

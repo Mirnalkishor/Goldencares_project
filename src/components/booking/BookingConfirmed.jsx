@@ -23,6 +23,7 @@ export default function BookingConfirmed({
   const amountInr = getServicePriceInr(form.service_slug, form.duration_hours);
   const isCod = paymentMethod === "cod";
   const paying = PAYING_STATES.has(paymentState);
+  const paid = paymentState === "success";
 
   useEffect(() => {
     if (!isCod && amountInr === null) {
@@ -55,7 +56,7 @@ export default function BookingConfirmed({
         phone: form.phone,
         onDismiss: () => {
           setPaymentState("idle");
-          setPaymentMessage("Payment was cancelled. You can try again whenever you are ready.");
+          setPaymentMessage("Payment was cancelled. Your request has not been placed yet — you can try again whenever you are ready.");
         },
         onFailure: (message) => {
           setPaymentState("error");
@@ -103,11 +104,20 @@ export default function BookingConfirmed({
         <Check className="h-6 w-6" />
       </span>
       <h1 className="mt-6 font-heading text-[2rem] leading-tight text-foreground sm:text-[2.4rem]">
-        Thank you, {form.full_name.split(" ")[0]}.
+        {paid ? "Thank you" : "One last step"}, {form.full_name.split(" ")[0]}.
       </h1>
       <p className="mt-3 max-w-lg text-[1rem] leading-relaxed text-muted-foreground">
-        Your request is with our team. We will call {form.phone} to confirm the companion and time — usually
-        within a couple of hours during {CONTACT.hours.toLowerCase()}.
+        {paid ? (
+          <>
+            Payment received. Your request is now with our team. We will call {form.phone} to confirm the
+            companion and timing — usually within a couple of hours, {CONTACT.hours.toLowerCase()}.
+          </>
+        ) : (
+          <>
+            Your visit details are ready. Pay the quoted amount below to place your request. We will call{" "}
+            {form.phone} to confirm the companion and timing only after payment succeeds.
+          </>
+        )}
       </p>
 
       <div className="mt-6 rounded-[1.5rem] border border-border bg-background p-5">
@@ -180,9 +190,9 @@ export default function BookingConfirmed({
             <Lock className="h-4 w-4 text-primary" /> Pay securely with Razorpay
           </p>
           <p className="mt-1 text-[0.82rem] leading-relaxed text-muted-foreground">
-            {paymentState === "success"
-              ? "Payment received. Your booking is confirmed and our team will call you before the visit."
-              : "This request is not yet a confirmed visit. Pay the quoted amount now; our team will still call to confirm availability and timing."}
+            {paid
+              ? "Payment received. Your request has been placed and our team will call to confirm the companion before the visit."
+              : "Your request has not been placed yet. Pay the quoted amount now; our team will call to confirm availability and timing only after payment succeeds."}
           </p>
 
           {paymentMessage ? (
@@ -221,7 +231,7 @@ export default function BookingConfirmed({
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
         {[
-          { icon: PhoneCall, title: "We call you", text: "To confirm the companion and the visit details." },
+          { icon: PhoneCall, title: "We call you", text: "After payment succeeds, to confirm the companion and visit details." },
           { icon: Clock, title: "The visit happens", text: "On time, for the hours you booked, as agreed." },
         ].map(({ icon: Icon, title, text }) => (
           <div key={title} className="rounded-xl border border-border p-4">

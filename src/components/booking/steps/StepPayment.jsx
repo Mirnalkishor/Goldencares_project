@@ -1,6 +1,7 @@
 import { Banknote, CreditCard } from "lucide-react";
 import ChoiceCard from "../ChoiceCard";
 import { getServicePriceInr } from "@/lib/services";
+import { COD_ENABLED } from "@/lib/paymentMethods";
 
 export default function StepPayment({ form, setField }) {
   const amount = getServicePriceInr(form.service_slug, form.duration_hours);
@@ -11,7 +12,8 @@ export default function StepPayment({ form, setField }) {
         How would you like to pay?
       </h2>
       <p className="mt-2 text-[0.95rem] text-muted-foreground">
-        Choose one option to place your request. We’ll confirm the companion and timing by phone either way.
+        Pay online to place your request. We’ll confirm the companion and timing by phone after the payment is
+        verified.
       </p>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -28,13 +30,18 @@ export default function StepPayment({ form, setField }) {
           onClick={() => setField("payment_method", "cod")}
           icon={Banknote}
           title="Cash on delivery"
-          description="No online payment. Pay the companion after the visit is complete."
-          meta={amount === null ? "Price based on duration" : `₹${amount} at the visit`}
+          description={
+            COD_ENABLED
+              ? "No online payment. Pay the companion after the visit is complete."
+              : "Temporarily unavailable. Please pay securely online instead."
+          }
+          meta={COD_ENABLED ? (amount === null ? "Price based on duration" : `₹${amount} at the visit`) : "Unavailable"}
+          disabled={!COD_ENABLED}
         />
       </div>
 
       <p className="mt-4 text-[0.82rem] leading-relaxed text-muted-foreground">
-        Your request can’t be placed until you choose one of these options.
+        Your request can’t be placed until online payment is selected and completed.
       </p>
     </div>
   );

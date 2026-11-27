@@ -1,17 +1,29 @@
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export default function ChoiceCard({ selected, onClick, icon: Icon, title, description, meta, className = "" }) {
+export default function ChoiceCard({
+  selected,
+  onClick,
+  icon: Icon,
+  title,
+  description,
+  meta,
+  disabled = false,
+  className = "",
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       aria-pressed={selected}
       className={cn(
         "flex w-full items-start gap-3 rounded-2xl border p-4 text-left transition-all duration-200",
-        selected
-          ? "border-primary bg-primary/[0.06] ring-2 ring-primary/15"
-          : "border-border bg-card hover:-translate-y-0.5 hover:border-primary/35",
+        disabled
+          ? "cursor-not-allowed border-border bg-muted/40 opacity-70"
+          : selected
+            ? "border-primary bg-primary/[0.06] ring-2 ring-primary/15"
+            : "border-border bg-card hover:-translate-y-0.5 hover:border-primary/35",
         className
       )}
     >
