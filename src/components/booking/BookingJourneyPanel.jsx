@@ -6,10 +6,12 @@ import {
   Loader2,
   ShieldCheck,
   Star,
+  UserRound,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import {
   bookingDateValue,
+  commaList,
   formatBookingDate,
   istDateKey,
   todayIstKey,
@@ -86,10 +88,12 @@ export default function BookingJourneyPanel({ booking, onChanged }) {
   const [reviewDone, setReviewDone] = useState(Boolean(booking?.reviewSubmitted));
   const [rating, setRating] = useState(Number(booking?.reviewRating) || 0);
   const [comment, setComment] = useState(booking?.reviewComment || "");
+  const [caregiverInfo, setCaregiverInfo] = useState(null);
   const primed = useRef(new Set());
 
   const status = booking?.status || "";
-  const assigned = Boolean(booking?.servicePersonnelId || booking?.caregiverId);
+  const caregiverId = booking?.servicePersonnelId || booking?.caregiverId || "";
+  const assigned = Boolean(caregiverId);
   const showStart = assigned && START_STATUSES.has(status);
   const showCompletion = assigned && COMPLETE_STATUSES.has(status);
   const showReview = status === "completed" && assigned;
@@ -102,6 +106,25 @@ export default function BookingJourneyPanel({ booking, onChanged }) {
     if (booking?.reviewRating != null) setRating(Number(booking.reviewRating));
     if (booking?.reviewComment) setComment(booking.reviewComment);
   }, [booking?.reviewSubmitted, booking?.reviewRating, booking?.reviewComment]);
+
+  // Once assigned, show the caregiver's public profile details to the family.
+  useEffect(() => {
+    if (!caregiverId) {
+      setCaregiverInfo(null);
+      return;
+    }
+    let active = true;
+    base44.entities.CaregiverApplication.get(caregiverId)
+      .then((profile) => {
+        if (active) setCaregiverInfo(profile || {});
+      })
+      .catch(() => {
+        if (active) setCaregiverInfo({});
+      });
+    return () => {
+      active = false;
+    };
+  }, [caregiverId]);
 
   // The code itself is fixed, but the server still needs an active hashed OTP
   // to verify. Prime it silently for bookings assigned before this flow existed.
@@ -193,6 +216,60 @@ export default function BookingJourneyPanel({ booking, onChanged }) {
       data-testid="booking-journey"
       className="mt-4 rounded-2xl border border-primary/20 bg-primary/5 p-4"
     >
+      {assigned ? (
+        <div className="border-b border-primary/15 pb-4" data-testid="assigned-caregiver">
+          <p className="inline-flex items-center gap-2 font-semibold text-foreground">
+            <UserRound className="h-4 w-4 text-primary" /> Your caregiver
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
+            <span className="font-heading text-[1.15rem] text-foreground">
+              {caregiverInfo?.name || caregiverName(booking)}
+            </span>
+            {Number(caregiverInfo?.rating) > 0 ? (
+              <span className="inline-flex items-center gap-1.5 text-[0.82rem] text-muted-foreground">
+                <Stars value={Number(caregiverInfo.rating)} /> {Number(caregiverInfo.rating)}/5
+              </span>
+            ) : null}
+          </div>
+          {caregiverId && caregiverInfo === null ? (
+            <p className="mt-2 flex items-center gap-2 text-[0.84rem] text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading caregiver details…
+            </p>
+          ) : (() => {
+            const details = [
+              caregiverInfo?.age ? `Age ${caregiverInfo.age}` : "",
+              caregiverInfo?.gender || "",
+              caregiverInfo?.experienceYears
+                ? `${caregiverInfo.experienceYears} years experience`
+                : "",
+              caregiverInfo?.languages ? `Languages: ${commaList(caregiverInfo.languages)}` : "",
+              caregiverInfo?.city || "",
+            ].filter(Boolean);
+            if (!details.length && !caregiverInfo?.bio) {
+              return (
+                <p className="mt-2 text-[0.84rem] text-muted-foreground">
+                  Your caregiver’s profile details will appear here once they add them.
+                </p>
+              );
+            }
+            return (
+              <>
+                {details.length ? (
+                  <p className="mt-2 text-[0.84rem] leading-relaxed text-muted-foreground">
+                    {details.join(" · ")}
+                  </p>
+                ) : null}
+                {caregiverInfo?.bio ? (
+                  <p className="mt-2 text-[0.84rem] leading-relaxed text-muted-foreground">
+                    {caregiverInfo.bio}
+                  </p>
+                ) : null}
+              </>
+            );
+          })()}
+        </div>
+      ) : null}
+
       {showStart ? (
         <div className="border-b border-primary/15 pb-4">
           <p className="inline-flex items-center gap-2 font-semibold text-foreground">

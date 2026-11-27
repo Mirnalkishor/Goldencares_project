@@ -95,6 +95,7 @@ export default function BookingConfirmed({
             <dt className="text-muted-foreground">Senior</dt>
             <dd className="text-right font-medium text-foreground">
               {form.elderName || "—"}
+              {form.elderGender ? ` · ${form.elderGender}` : ""}
               {form.elderAge ? ` · ${form.elderAge} years` : ""}
             </dd>
           </div>

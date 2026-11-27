@@ -437,6 +437,22 @@ function BookingsTab({ bookings, bookingCursor, loadingMore, loadMoreBookings, l
                   ) : null}
                 </div>
 
+                {(booking.elderName || booking.elderAge || booking.elderGender) && !isCallback ? (
+                  <p className="mt-3 inline-flex items-center gap-2 text-[0.85rem] text-muted-foreground">
+                    <UserRound className="h-4 w-4 text-primary" />
+                    Care recipient: {booking.elderName || "Not provided"}
+                    {booking.elderGender ? ` · ${booking.elderGender}` : ""}
+                    {booking.elderAge ? ` · ${booking.elderAge} years` : ""}
+                  </p>
+                ) : null}
+
+                {booking.servicePersonnelName || booking.caregiverName ? (
+                  <p className="mt-2 inline-flex items-center gap-2 text-[0.85rem] font-medium text-foreground">
+                    <UserRound className="h-4 w-4 text-primary" />
+                    Assigned to: {booking.servicePersonnelName || booking.caregiverName}
+                  </p>
+                ) : null}
+
                 {booking.notes ? (
                   <p className="mt-3 text-[0.85rem] leading-relaxed text-muted-foreground">{booking.notes}</p>
                 ) : null}

@@ -35,6 +35,7 @@ test("saved address edit opens a popup with prefilled fields", async ({ page }) 
   await expect(dialog.locator("#phone")).toHaveValue(/.+/);
   await expect(dialog.locator("#email")).toHaveValue(/@/);
   await expect(dialog.locator("#elderName")).toHaveValue(/.+/);
+  await expect(dialog.locator("#elderGender")).toHaveValue(/.+/);
   await expect(dialog.locator("#elderAge")).toHaveValue(/^\d+$/);
   await dialog.getByRole("button", { name: "Cancel" }).click();
 
@@ -60,6 +61,7 @@ test("a new address named Dad is saved, previewed and reused", async ({ page }) 
   await dialog.getByRole("button", { name: "Hindi" }).click();
   await dialog.getByRole("button", { name: /^WhatsApp/ }).click();
   await dialog.locator("#elderName").fill("Dad Senior");
+  await dialog.locator("#elderGender").selectOption("Female");
   await dialog.locator("#elderAge").fill("72");
   await dialog.locator("#notes").fill("Ring the second bell.");
   await dialog.getByRole("button", { name: "Save address" }).click();
@@ -68,6 +70,7 @@ test("a new address named Dad is saved, previewed and reused", async ({ page }) 
   await expect(page.getByRole("heading", { name: "Dad" })).toBeVisible();
   await expect(page.getByText("Phase 9, near the park").first()).toBeVisible();
   await expect(page.getByText("Dad Senior", { exact: true })).toBeVisible();
+  await expect(page.getByText("Female", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("72 years")).toBeVisible();
   await expect(page.getByText("WhatsApp").first()).toBeVisible();
 
@@ -80,6 +83,7 @@ test("a new address named Dad is saved, previewed and reused", async ({ page }) 
 
   await dadCard.getByRole("button", { name: "Edit" }).click();
   await expect(page.getByRole("dialog").locator("#elderName")).toHaveValue("Dad Senior");
+  await expect(page.getByRole("dialog").locator("#elderGender")).toHaveValue("Female");
   await expect(page.getByRole("dialog").locator("#elderAge")).toHaveValue("72");
   await page.getByRole("dialog").getByRole("button", { name: "Cancel" }).click();
 

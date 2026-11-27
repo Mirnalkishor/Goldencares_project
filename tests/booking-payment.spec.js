@@ -16,6 +16,17 @@ async function goToPaymentStep(page) {
   await page.getByRole("button", { name: /^Temple Visit/ }).click();
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByRole("button", { name: "Continue" }).click();
+
+  // Older saved addresses may not include the senior's gender yet.
+  const edit = page.getByRole("button", { name: "Edit", exact: true }).first();
+  if (await edit.count()) {
+    await edit.click();
+    const dialog = page.getByRole("dialog");
+    const gender = dialog.locator("#elderGender");
+    if ((await gender.inputValue()) === "") await gender.selectOption("Female");
+    await dialog.getByRole("button", { name: "Save address" }).click();
+  }
+
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByRole("button", { name: "Continue" }).click();
 }

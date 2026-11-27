@@ -20,6 +20,7 @@ const CITY_NOTES = {
 
 const RELATIONSHIPS = ["Daughter", "Son", "Spouse", "I'm the senior", "Another relative or friend"];
 const LANGUAGES = ["Hindi", "Punjabi", "English"];
+const GENDERS = ["Female", "Male", "Other"];
 const CONTACT_METHODS = [
   { value: "Phone call", title: "Phone call", description: "We call you to confirm the details." },
   { value: "WhatsApp", title: "WhatsApp", description: "A message first, then a call if needed." },
@@ -45,6 +46,7 @@ function blankAddress(defaults = {}) {
     notes: "",
     elderName: "",
     elderAge: "",
+    elderGender: "",
   };
 }
 
@@ -54,6 +56,7 @@ export function validateAddressDraft(draft) {
   if (!isValidPhoneNumber(draft.phone || "")) return "Please enter a valid phone number.";
   if (!isValidEmail(draft.email || "")) return "Please enter a valid email address for your payment receipt.";
   if (!draft.elderName?.trim()) return "Please add the senior's name.";
+  if (!GENDERS.includes(draft.elderGender)) return "Please select the senior's gender.";
   if (!String(draft.elderAge || "").trim()) return "Please enter the senior's age.";
   const age = Number(draft.elderAge);
   if (!Number.isInteger(age) || age < 1 || age > 120) return "Please enter a valid senior age (1–120).";
@@ -231,6 +234,7 @@ export default function StepAddress({
             <PreviewItem label="Phone" value={form.phone || "—"} />
             <PreviewItem label="Email" value={form.email || "—"} />
             <PreviewItem label="Senior's name" value={form.elderName || "—"} />
+            <PreviewItem label="Senior's gender" value={form.elderGender || "—"} />
             <PreviewItem label="Senior's age" value={form.elderAge ? `${form.elderAge} years` : "—"} />
             <PreviewItem label="Relationship" value={form.relationship || "Prefer not to say"} />
             <PreviewItem label="Language" value={form.language_preference || "No preference"} />
@@ -406,7 +410,7 @@ function AddressForm({ draft, setField, isAuthenticated }) {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-3">
         <div>
           <label htmlFor="elderName" className="label-strong">Senior's name</label>
           <input
@@ -417,6 +421,20 @@ function AddressForm({ draft, setField, isAuthenticated }) {
             autoComplete="off"
             placeholder="Name of the person receiving care"
           />
+        </div>
+        <div>
+          <label htmlFor="elderGender" className="label-strong">Senior's gender</label>
+          <select
+            id="elderGender"
+            value={draft.elderGender || ""}
+            onChange={(event) => setField("elderGender", event.target.value)}
+            className="field mt-2"
+          >
+            <option value="">Select gender</option>
+            {GENDERS.map((option) => (
+              <option key={option} value={option}>{option}</option>
+            ))}
+          </select>
         </div>
         <div>
           <label htmlFor="elderAge" className="label-strong">Senior's age</label>

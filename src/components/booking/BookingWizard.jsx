@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { serviceBySlug } from "@/lib/services";
-import { createPaymentToken, hashPaymentToken } from "@/lib/payu";
+import { createPaymentToken, getVisitPriceInr, hashPaymentToken } from "@/lib/payu";
 import { ArrowLeft, ArrowRight, Loader2, Lock } from "lucide-react";
 import BookingProgress from "./BookingProgress";
 import BookingSummary from "./BookingSummary";
@@ -34,6 +34,7 @@ const ADDRESS_FIELDS = [
   "notes",
   "elderName",
   "elderAge",
+  "elderGender",
 ];
 
 function formFromAddress(address) {
@@ -82,6 +83,7 @@ function emptyForm(initialService, initialDuration) {
     notes: "",
     elderName: "",
     elderAge: "",
+    elderGender: "",
   };
 }
 
@@ -265,6 +267,7 @@ export default function BookingWizard({ initialService, initialDuration }) {
         request_type: "visit",
         service_name: service?.name || "Companion visit",
         duration_hours: Number(form.duration_hours),
+        price: getVisitPriceInr(Number(form.duration_hours)),
         userId: user.id,
         payment_method: form.payment_method,
         paymentStatus: isCod ? "cod" : "pending_payment",
@@ -280,6 +283,7 @@ export default function BookingWizard({ initialService, initialDuration }) {
         email: form.email,
         elderName: form.elderName,
         elderAge: Number(form.elderAge),
+        elderGender: form.elderGender,
         relationship: form.relationship,
         bookingMode: form.relationship === "I'm the senior" ? "self" : "other",
         relationToRecipient: form.relationship || "other",

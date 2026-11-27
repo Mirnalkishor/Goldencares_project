@@ -24,7 +24,7 @@ export default function BookingSummary({ form, steps, current, onJump }) {
     {
       label: "Senior",
       value: form.elderName
-        ? `${form.elderName}${form.elderAge ? ` · ${form.elderAge} yrs` : ""}`
+        ? `${form.elderName}${form.elderGender ? ` · ${form.elderGender}` : ""}${form.elderAge ? ` · ${form.elderAge} yrs` : ""}`
         : "Not added",
       step: 2,
     },

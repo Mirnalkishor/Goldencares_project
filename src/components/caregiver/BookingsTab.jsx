@@ -212,6 +212,7 @@ function BookingDetailDialog({ booking, onClose, onChanged }) {
             <h3 className="font-heading text-[1.05rem] text-foreground">Care recipient</h3>
             <dl className="mt-3 space-y-2 text-[0.88rem]">
               <DetailRow label="Name" value={booking.elderName || booking.userName || "—"} />
+              <DetailRow label="Gender" value={booking.elderGender || "—"} />
               <DetailRow label="Age" value={booking.elderAge ? `${booking.elderAge} years` : "—"} />
               <DetailRow label="Relation" value={booking.relationToRecipient || "—"} />
               <DetailRow label="Language" value={booking.language_preference || "—"} />

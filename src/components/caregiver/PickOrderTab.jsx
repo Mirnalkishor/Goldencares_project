@@ -62,7 +62,7 @@ export default function PickOrderTab({ onChanged, onOpenBookings }) {
         <div>
           <h2 className="font-heading text-[1.5rem] text-foreground">Pick order</h2>
           <p className="mt-1 text-[0.88rem] text-muted-foreground">
-            Today’s and upcoming platform jobs. Location and job type only — full details appear once assigned.
+            Today’s and upcoming platform jobs. Job type, location and price only — full details appear once assigned.
           </p>
         </div>
         <span className="inline-flex items-center gap-2 rounded-full bg-secondary px-3 py-1.5 text-[0.8rem] font-medium text-muted-foreground">
@@ -106,6 +106,13 @@ export default function PickOrderTab({ onChanged, onOpenBookings }) {
                 <h3 className="font-heading text-[1.15rem] text-foreground">{order.jobType}</h3>
                 <p className="mt-2 flex items-center gap-2 text-[0.88rem] text-muted-foreground">
                   <MapPin className="h-4 w-4 shrink-0 text-primary" /> {order.location}
+                </p>
+                <p className="mt-3 text-[0.9rem] font-semibold text-foreground">
+                  <span className="inline-flex items-center rounded-full bg-secondary px-3 py-1">
+                    {order.priceInr != null
+                      ? `₹${Number(order.priceInr).toLocaleString("en-IN")}`
+                      : "Price on assignment"}
+                  </span>
                 </p>
               </div>
               <button
