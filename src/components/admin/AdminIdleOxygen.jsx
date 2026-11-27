@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
-const IDLE_MS = 60_000;
-const ACTIVITY_EVENTS = ["mousemove", "mousedown", "keydown", "scroll", "touchstart", "wheel"];
+const IDLE_MS = 10_000;
 
 export default function AdminIdleOxygen() {
   const [idle, setIdle] = useState(false);
@@ -9,29 +8,12 @@ export default function AdminIdleOxygen() {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
   const [party, setParty] = useState(false);
-  const idleRef = useRef(false);
 
   useEffect(() => {
-    // Handy for previewing the easter egg without waiting a full minute.
+    // Handy for previewing the easter egg without waiting.
     const demo = new URLSearchParams(window.location.search).has("idleDemo");
-    let timer;
-
-    function resetTimer() {
-      if (idleRef.current) return;
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        idleRef.current = true;
-        setIdle(true);
-      }, demo ? 800 : IDLE_MS);
-    }
-
-    ACTIVITY_EVENTS.forEach((event) => window.addEventListener(event, resetTimer, { passive: true }));
-    resetTimer();
-
-    return () => {
-      clearTimeout(timer);
-      ACTIVITY_EVENTS.forEach((event) => window.removeEventListener(event, resetTimer));
-    };
+    const timer = setTimeout(() => setIdle(true), demo ? 800 : IDLE_MS);
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -88,7 +70,7 @@ export default function AdminIdleOxygen() {
         className="absolute right-3 top-3 z-[110] rounded px-1.5 py-1 text-[10px] font-medium leading-none tracking-wide text-white/70 transition-colors hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 sm:text-[11px]"
         title="Refresh the admin page"
       >
-        refresh it to get 1 minute of oxygen
+        refresh it to get 10 seconds of oxygen
       </button>
 
       <div className="relative z-[105] mx-auto flex h-full w-full max-w-xl items-center justify-center px-6 py-16">
