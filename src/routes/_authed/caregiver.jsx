@@ -22,6 +22,7 @@ import AvailabilityTab from "@/components/caregiver/AvailabilityTab";
 import BookingsTab from "@/components/caregiver/BookingsTab";
 import EarningsTab from "@/components/caregiver/EarningsTab";
 import ProfileTab from "@/components/caregiver/ProfileTab";
+import { CaregiverKycGate } from "@/components/caregiver/CaregiverKycGate";
 import {
   bookingDateValue,
   bookingServiceName,
@@ -238,6 +239,10 @@ function CaregiverPage() {
 
   const firstName = (personnel?.name || profile?.name || user.full_name || "there").split(" ")[0];
   const approved = Boolean(personnel?.isApproved ?? profile?.isApproved);
+  // Legacy caregivers had no `kyc` map; they stay usable. New caregivers must
+  // complete the UIDAI-backed KYC flow before the panel/order feed opens.
+  const kycState = personnel?.kyc || profile?.kyc || null;
+  const kycVerified = !kycState || kycState.status === "verified";
   const availablePaise = Number(personnel?.availablePaise || 0);
   const unreadNotifications = (notifications || []).filter((item) => !item.isRead).length;
 
@@ -289,7 +294,9 @@ function CaregiverPage() {
         </p>
       ) : null}
 
-      <div className="mt-8 flex flex-wrap gap-2 border-b border-border pb-3">
+      {kycVerified ? (
+        <>
+          <div className="mt-8 flex flex-wrap gap-2 border-b border-border pb-3">
         {TABS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -357,15 +364,26 @@ function CaregiverPage() {
           onSaved={reloadData}
         />
       ) : null}
-      {tab === "profile" ? (
-        <ProfileTab
-          key={`profile-${reload}`}
-          uid={user.id}
+          {tab === "profile" ? (
+            <ProfileTab
+              key={`profile-${reload}`}
+              uid={user.id}
+              personnel={personnel}
+              profile={profile}
+              onSaved={reloadData}
+            />
+          ) : null}
+        </>
+      ) : (
+        <CaregiverKycGate
+          user={user}
           personnel={personnel}
-          profile={profile}
-          onSaved={reloadData}
+          onVerified={() => {
+            setReload((value) => value + 1);
+            window.location.reload();
+          }}
         />
-      ) : null}
+      )}
     </section>
   );
 }

@@ -1,149 +1,91 @@
-import { Lock, Mail, UserPlus } from "lucide-react";
+import { Lock, Mail, Phone, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
-import { signUpWithEmail } from "@/lib/authMfa";
 import { AuthLayout } from "@/components/auth/AuthLayout";
-import { MfaFlow } from "@/components/auth/MfaFlow";
-import { MfaScreen } from "@/components/auth/MfaParts";
 import { AuthError, AuthLink, GoogleButton, OrDivider, SubmitButton } from "@/components/auth/parts";
 import { Input } from "@/components/ui/input";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Label } from "@/components/ui/label";
+import { signUpWithEmail } from "@/lib/authMfa";
+import { normalizePhoneInput } from "@/lib/activation";
 import { safeReturnTo } from "@/lib/authReturnTo";
 
-const isAlreadyVerified = (err) => err?.status === 400 && /already verified/i.test(err?.message ?? "");
-
 /**
- * The /register page: register → OTP → verifyOtp → setToken. Registration alone
- * does not sign the user in (the account is unverified), so the code step is never
- * skipped and loginViaEmailPassword is never called right after register.
+ * Registration now creates a real, gated account:
+ * email/password + role + full name + mobile → activation OTPs → app access.
+ * Caregiver KYC is a second lock enforced on the caregiver panel and order feed.
  */
 export function RegisterPage() {
   const returnTo = safeReturnTo();
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [role, setRole] = useState("family");
-  const [otpCode, setOtpCode] = useState("");
-  const [step, setStep] = useState("form");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [mfaChallenge, setMfaChallenge] = useState(null);
 
-  async function register(e) {
-    e.preventDefault();
+  async function register(event) {
+    event.preventDefault();
     setError("");
     if (password !== confirm) {
       setError("Passwords do not match");
       return;
     }
+    const normalizedPhone = normalizePhoneInput(phone);
+    if (!/^\+?\d{10,13}$/.test(normalizedPhone)) {
+      setError("Enter a valid 10-digit mobile number");
+      return;
+    }
+
     setBusy(true);
     try {
-      // Original Golden-Cares-App signUpWithEmail: createUserWithEmailAndPassword(email,password).
       const cred = await signUpWithEmail(email, password);
-      // NEW: "Who am I?" role. Firebase Auth itself has no role; write `role` on `users`.
-      const { base44 } = await import("@/api/base44Client");
       const uid = cred?.user?.uid || cred?.user?.id;
-      try {
-        await base44.entities.User.create({
-          id: uid || email,
-          email,
-          role, // 'family' | 'caregiver' (matches production Firestore rules)
-        });
-      } catch { /* users doc best-effort */ }
+      if (!uid) throw new Error("Account was created but could not be identified. Please sign in.");
+
+      await base44.entities.User.create({
+        id: uid,
+        email: email.trim().toLowerCase(),
+        name: fullName.trim(),
+        phone: normalizedPhone,
+        role,
+        activation: {
+          emailVerified: false,
+          phoneVerified: false,
+          complete: false,
+          startedAt: Date.now(),
+        },
+        ...(role === "caregiver" ? { kyc: { status: "not_started" } } : {}),
+      });
+
       if (role === "caregiver") {
-        // Caregiver record in `servicePersonnel`. NOT auto-admin. (original `servicePersonnel`.)
-        try {
-          await base44.entities.CaregiverApplication.create({ email, role: "caregiver", status: "new" });
-        } catch { /* servicePersonnel best-effort */ }
+        await base44.entities.CaregiverApplication.create({
+          id: uid,
+          email: email.trim().toLowerCase(),
+          name: fullName.trim(),
+          phone: normalizedPhone,
+          role: "caregiver",
+          status: "new",
+          kyc: { status: "not_started" },
+          isActive: true,
+          isAvailable: false,
+        });
       }
-      // Firebase email-verification link sent; old app does NOT require OTP to sign in.
-      setStep("otp");
+
+      try {
+        await base44.functions.invoke("activationSendEmailOtp", {});
+      } catch {
+        toast("Account created", { description: "Open the activation page and resend the email code." });
+      }
+
+      const destination = `/activate?returnTo=${encodeURIComponent(returnTo)}`;
+      window.location.href = destination;
     } catch (err) {
       setError(err.message || "Registration failed");
-    } finally {
       setBusy(false);
     }
-  }
-
-  async function verify(e) {
-    e.preventDefault();
-    setError("");
-    setBusy(true);
-    try {
-      const result = await base44.auth.verifyOtp({ email, otpCode });
-      if (result?.mfa_required) {
-        setMfaChallenge(result);
-        return;
-      }
-      if (result?.access_token) base44.auth.setToken(result.access_token);
-      window.location.href = returnTo;
-    } catch (err) {
-      // Verified server-side but the answer never arrived: the code is spent and
-      // there is no token, so the only way forward is a normal sign-in.
-      if (isAlreadyVerified(err)) setStep("already_verified");
-      else setError(err.message || "Invalid verification code");
-      setBusy(false);
-    }
-  }
-
-  async function resend() {
-    setError("");
-    try {
-      await base44.auth.resendOtp(email);
-      toast("Code sent", { description: "Check your email for the new code." });
-    } catch (err) {
-      if (isAlreadyVerified(err)) setStep("already_verified");
-      else setError(err.message || "Failed to resend code");
-    }
-  }
-
-  // The account is verified; the second sign-in step replaces the whole page and finishes signing in.
-  if (mfaChallenge) return <MfaScreen><MfaFlow challenge={mfaChallenge} returnTo={returnTo} /></MfaScreen>;
-
-  if (step === "already_verified") {
-    return (
-      <AuthLayout icon={UserPlus} title="Create your account" subtitle="Sign up to get started">
-        <p className="mb-4 text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">{email}</span> is already verified. Sign in to continue.
-        </p>
-        <AuthLink to="/login" returnTo={returnTo} className="inline-flex h-12 w-full items-center justify-center rounded-md bg-primary text-sm font-medium text-primary-foreground hover:bg-primary/90">
-          Sign in
-        </AuthLink>
-      </AuthLayout>
-    );
-  }
-
-  if (step === "otp") {
-    return (
-      <AuthLayout icon={UserPlus} title="Create your account" subtitle="Sign up to get started">
-        <form onSubmit={verify}>
-          <p className="mb-4 text-sm text-muted-foreground">
-            We sent a 6-digit code to <span className="font-medium text-foreground">{email}</span>.
-          </p>
-          <AuthError>{error}</AuthError>
-          <div className="mb-6 flex justify-center">
-            <InputOTP maxLength={6} value={otpCode} onChange={setOtpCode} autoFocus autoComplete="one-time-code">
-              <InputOTPGroup>
-                {[0, 1, 2, 3, 4, 5].map((i) => (
-                  <InputOTPSlot key={i} index={i} />
-                ))}
-              </InputOTPGroup>
-            </InputOTP>
-          </div>
-          <SubmitButton busy={busy} busyLabel="Verifying..." disabled={busy || otpCode.length < 6}>
-            Verify
-          </SubmitButton>
-          <p className="mt-4 text-center text-sm text-muted-foreground">
-            Didn't receive the code?{" "}
-            <button type="button" onClick={resend} className="font-medium text-primary hover:underline">
-              Resend
-            </button>
-          </p>
-        </form>
-      </AuthLayout>
-    );
   }
 
   return (
@@ -153,15 +95,26 @@ export function RegisterPage() {
       <AuthError>{error}</AuthError>
       <form onSubmit={register} className="space-y-4">
         <div className="space-y-2">
+          <Label htmlFor="register-name">Full name</Label>
+          <Input id="register-name" autoComplete="name" placeholder="Your full name" value={fullName} onChange={(event) => setFullName(event.target.value)} className="h-12" disabled={busy} required />
+        </div>
+        <div className="space-y-2">
           <Label htmlFor="register-email">Email</Label>
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-            <Input id="register-email" type="email" autoComplete="email" autoFocus placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="h-12 pl-10" disabled={busy} required />
+            <Input id="register-email" type="email" autoComplete="email" placeholder="you@example.com" value={email} onChange={(event) => setEmail(event.target.value)} className="h-12 pl-10" disabled={busy} required />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="register-phone">Mobile number</Label>
+          <div className="relative">
+            <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            <Input id="register-phone" type="tel" autoComplete="tel" inputMode="numeric" placeholder="9876543210" value={phone} onChange={(event) => setPhone(event.target.value)} className="h-12 pl-10" disabled={busy} required />
           </div>
         </div>
         <fieldset className="space-y-2" disabled={busy}>
           <legend className="text-sm font-medium">Who am I?</legend>
-          <div className="flex gap-4">
+          <div className="flex gap-6">
             <label className="flex items-center gap-2">
               <input type="radio" name="role" value="family" checked={role === "family"} onChange={() => setRole("family")} />
               User
@@ -176,14 +129,14 @@ export function RegisterPage() {
           <Label htmlFor="register-password">Password</Label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-            <Input id="register-password" type="password" autoComplete="new-password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className="h-12 pl-10" disabled={busy} required />
+            <Input id="register-password" type="password" autoComplete="new-password" placeholder="••••••••" value={password} onChange={(event) => setPassword(event.target.value)} className="h-12 pl-10" disabled={busy} required />
           </div>
         </div>
         <div className="space-y-2">
           <Label htmlFor="register-confirm">Confirm password</Label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-            <Input id="register-confirm" type="password" autoComplete="new-password" placeholder="••••••••" value={confirm} onChange={(e) => setConfirm(e.target.value)} className="h-12 pl-10" disabled={busy} required />
+            <Input id="register-confirm" type="password" autoComplete="new-password" placeholder="••••••••" value={confirm} onChange={(event) => setConfirm(event.target.value)} className="h-12 pl-10" disabled={busy} required />
           </div>
         </div>
         <SubmitButton busy={busy} busyLabel="Creating account...">
@@ -199,4 +152,3 @@ export function RegisterPage() {
     </AuthLayout>
   );
 }
-

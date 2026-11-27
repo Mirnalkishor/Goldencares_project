@@ -1,5 +1,6 @@
 import { Lock, LogIn, Mail } from "lucide-react";
 import { useState } from "react";
+import { base44 } from "@/api/base44Client";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { AuthError, AuthLink, GoogleButton, OrDivider, SubmitButton } from "@/components/auth/parts";
 import { Input } from "@/components/ui/input";
@@ -36,7 +37,11 @@ export function LoginPage() {
         return;
       }
       // A hard redirect: the app re-initializes with the new session.
-      window.location.href = returnTo;
+      const profile = await base44.auth.me();
+      const needsActivation = profile.activation && profile.activation.complete !== true;
+      window.location.href = needsActivation
+        ? `/activate?returnTo=${encodeURIComponent(returnTo)}`
+        : returnTo;
     } catch (err) {
       setError(err.message || "Invalid email or password");
       setBusy(false);

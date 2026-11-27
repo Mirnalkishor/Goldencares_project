@@ -171,6 +171,8 @@ const authApi = {
       provider: u.providerData?.[0]?.providerId,
       isApproved: profile?.isApproved ?? claims.isApproved,
       verificationStatus: profile?.verificationStatus,
+      activation: profile?.activation ?? null,
+      kyc: profile?.kyc ?? null,
       role: claims.role === "admin" ? "admin" : (profile?.role || claims.role || "family"),
     };
   },

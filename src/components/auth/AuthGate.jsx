@@ -22,7 +22,19 @@ export async function requireSignedIn({ context, location }) {
   // A /me outage (429, 503) is not a sign-out: it rejects here and reaches the error
   // boundary, whose "Try again" asks the server again (a failed query caches nothing).
   const { user, error } = await context.queryClient.ensureQueryData(authQuery);
-  if (user) return { user };
+  if (user) {
+    // A new account can sign in but cannot use the app until BOTH activation
+    // OTPs are verified. The activation route is deliberately outside _authed
+    // so this redirect cannot recurse.
+    if (user.activation && user.activation.complete !== true) {
+      throw redirect({
+        to: "/activate",
+        search: { returnTo: location.href },
+        reloadDocument: true,
+      });
+    }
+    return { user };
+  }
   // Thrown rather than returned so the children's loaders never run without a user.
   if (error?.type === "user_not_registered") throw new NotRegisteredError(error.message);
   // A document navigation on purpose: an app served behind the platform login gets the

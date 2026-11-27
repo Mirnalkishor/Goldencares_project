@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AdminBadge,
   AdminButton,
@@ -37,8 +37,20 @@ function CaregiversPage() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [onlyPending, setOnlyPending] = useState(false);
+  const [kycDetail, setKycDetail] = useState(null);
+  const [kycBusy, setKycBusy] = useState(false);
 
   const list = useAdminPagedList("adminListServicePersonnel", {}, "personnel", 50);
+
+  useEffect(() => {
+    let active = true;
+    setKycDetail(null);
+    if (!selected?.id) return () => { active = false; };
+    adminCall("adminGetKycDocument", { uid: selected.id })
+      .then((data) => { if (active) setKycDetail(data); })
+      .catch(() => { if (active) setKycDetail(null); });
+    return () => { active = false; };
+  }, [selected?.id]);
   const rows = onlyPending ? list.rows.filter((row) => !row.isApproved) : list.rows;
 
   async function save() {
@@ -82,6 +94,28 @@ function CaregiversPage() {
       setMessage(adminErrorMessage(err));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function reviewKyc(decision) {
+    if (!selected?.id) return;
+    if (decision === "reject" && !window.confirm("Reject this caregiver's KYC?")) return;
+    setKycBusy(true);
+    setMessage("");
+    try {
+      await adminCall("adminReviewKyc", {
+        uid: selected.id,
+        decision,
+        reason: decision === "reject" ? "Manual admin review" : "",
+      });
+      setMessage(decision === "approve" ? "KYC approved and caregiver whitelisted." : "KYC rejected.");
+      const data = await adminCall("adminGetKycDocument", { uid: selected.id });
+      setKycDetail(data);
+      list.reload();
+    } catch (err) {
+      setMessage(adminErrorMessage(err));
+    } finally {
+      setKycBusy(false);
     }
   }
 
@@ -157,6 +191,46 @@ function CaregiversPage() {
                   <AdminField label="Experience years (primary only)"><input id="cg-experience" type="number" className="field mt-1" defaultValue={selected.experienceYears || 0} /></AdminField>
                 </>
               ) : null}
+            </div>
+            <div className="rounded-xl border border-border bg-background p-4 text-[0.82rem]">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="label-strong">KYC / masked Aadhaar</p>
+                {kycDetail?.documentUrl ? (
+                  <a href={kycDetail.documentUrl} target="_blank" rel="noreferrer" className="font-semibold text-primary hover:underline">
+                    Open document ↗
+                  </a>
+                ) : null}
+              </div>
+              {kycDetail ? (
+                <>
+                  <p className="mt-2">
+                    Status: <strong>{String(kycDetail.status || "not_started").replaceAll("_", " ")}</strong>
+                    {kycDetail.reviewReason ? <span className="text-destructive"> · {kycDetail.reviewReason}</span> : null}
+                  </p>
+                  {kycDetail.extracted ? (
+                    <p className="mt-1 text-muted-foreground">
+                      {kycDetail.extracted.name} · DOB {kycDetail.extracted.dob || "—"} · {kycDetail.extracted.gender || "—"} · last 4 {kycDetail.extracted.aadhaarLast4 || "—"}
+                    </p>
+                  ) : null}
+                  {kycDetail.documentSha256 ? <p className="mt-1 break-all text-muted-foreground">SHA-256: {kycDetail.documentSha256}</p> : null}
+                  {kycDetail.logs?.length ? (
+                    <ul className="mt-3 space-y-1 border-t border-border pt-3">
+                      {kycDetail.logs.slice(0, 8).map((entry) => (
+                        <li key={entry.id} className="text-[0.76rem] text-muted-foreground">
+                          {String(entry.event || "").replaceAll("_", " ")} · {formatDate(entry.at)}
+                          {entry.detail?.failures?.length ? <span className="text-destructive"> · {entry.detail.failures.join(", ")}</span> : null}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <AdminButton variant="secondary" loading={kycBusy} onClick={() => reviewKyc("approve")}>Approve KYC</AdminButton>
+                    <AdminButton variant="danger" loading={kycBusy} onClick={() => reviewKyc("reject")}>Reject KYC</AdminButton>
+                  </div>
+                </>
+              ) : (
+                <p className="mt-2 text-muted-foreground">No KYC documents submitted yet.</p>
+              )}
             </div>
             {selected.reviews ? (
               <div className="rounded-xl border border-border bg-background p-4 text-[0.82rem]">

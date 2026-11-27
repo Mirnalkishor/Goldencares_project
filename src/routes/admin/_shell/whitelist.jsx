@@ -91,6 +91,7 @@ function WhitelistPage() {
   const columns = [
     { key: "email", label: "Email", render: (row) => <span className="font-semibold text-foreground">{row.email}</span> },
     { key: "status", label: "Status", render: (row) => <AdminBadge status={row.isActive !== false ? "active" : "dismissed"} /> },
+    { key: "source", label: "Source", render: (row) => row.source === "kyc-auto" ? <AdminBadge status="approved">KYC auto</AdminBadge> : "Manual" },
     { key: "updatedBy", label: "Updated by", render: (row) => row.updatedBy || "—" },
     { key: "updatedAt", label: "Updated", render: (row) => formatDateTime(row.updatedAt) },
     {
