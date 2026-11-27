@@ -4,6 +4,7 @@ import { CalendarOff, CircleCheck, Clock3, Loader2 } from "lucide-react";
 import { getDb } from "@/api/firebaseClient";
 import {
   ACTIVE_BOOKING_STATUSES,
+  bookingDateValue,
   istDateKey,
   todayIstKey,
   toArray,
@@ -60,7 +61,7 @@ export default function AvailabilityTab({ uid, personnel, profile, bookings, onS
     const result = new Set();
     for (const booking of bookings || []) {
       if (!ACTIVE_BOOKING_STATUSES.has(booking.status)) continue;
-      const key = istDateKey(booking.date);
+      const key = istDateKey(bookingDateValue(booking));
       if (!key || key < todayKey) continue;
       result.add(key);
     }

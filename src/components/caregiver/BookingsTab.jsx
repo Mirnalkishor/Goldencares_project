@@ -18,7 +18,13 @@ import {
   ShieldCheck,
   UserRound,
 } from "lucide-react";
-import { formatBookingDate, paiseToInr } from "./utils";
+import {
+  bookingDateValue,
+  bookingTime,
+  formatBookingDate,
+  paiseToInr,
+  UPCOMING_BOOKING_STATUSES,
+} from "./utils";
 
 const FILTERS = [
   { key: "upcoming", label: "Upcoming" },
@@ -31,7 +37,7 @@ function inFilter(booking, filter) {
   if (filter === "all") return true;
   const status = booking.status || "";
   if (filter === "upcoming") {
-    return ["pending_payment", "confirmed", "upcoming", "in_progress", "completion_requested"].includes(status);
+    return UPCOMING_BOOKING_STATUSES.has(status);
   }
   return status === filter;
 }
@@ -102,10 +108,10 @@ export default function BookingsTab({ bookings, onChanged }) {
 
               <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 border-t border-border pt-4 text-[0.85rem] text-muted-foreground">
                 <span className="inline-flex items-center gap-2">
-                  <CalendarDays className="h-4 w-4 text-primary" /> {formatBookingDate(booking.date)}
+                  <CalendarDays className="h-4 w-4 text-primary" /> {formatBookingDate(bookingDateValue(booking))}
                 </span>
                 <span className="inline-flex items-center gap-2">
-                  <Clock3 className="h-4 w-4 text-primary" /> {booking.time || "Time to confirm"}
+                  <Clock3 className="h-4 w-4 text-primary" /> {bookingTime(booking)}
                 </span>
                 {booking.duration ? <span>{booking.duration}</span> : null}
                 {booking.userLocationAddress ? (
@@ -190,7 +196,7 @@ function BookingDetailDialog({ booking, onClose, onChanged }) {
             <StatusPill status={booking.status} />
           </div>
           <DialogDescription>
-            {formatBookingDate(booking.date)} · {booking.time || "Time to confirm"} · {booking.duration || "Duration to confirm"}
+            {formatBookingDate(bookingDateValue(booking))} · {bookingTime(booking)} · {booking.duration || "Duration to confirm"}
           </DialogDescription>
         </DialogHeader>
 

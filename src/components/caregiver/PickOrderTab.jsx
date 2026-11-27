@@ -23,6 +23,23 @@ export default function PickOrderTab({ onChanged, onOpenBookings }) {
     load();
   }, [load]);
 
+  // Picked orders disappear for every caregiver, including caregivers who
+  // already have the tab open. Refresh periodically and on tab focus.
+  useEffect(() => {
+    function refresh() {
+      if (pickingId || document.visibilityState !== "visible") return;
+      load();
+    }
+    const timer = window.setInterval(refresh, 15000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [load, pickingId]);
+
   async function pick(order) {
     setPickingId(order.id);
     setError("");

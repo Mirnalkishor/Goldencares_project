@@ -1,4 +1,5 @@
 export const ACTIVE_BOOKING_STATUSES = new Set([
+  "new",
   "pending_payment",
   "confirmed",
   "upcoming",
@@ -7,6 +8,7 @@ export const ACTIVE_BOOKING_STATUSES = new Set([
 ]);
 
 export const UPCOMING_BOOKING_STATUSES = new Set([
+  "new",
   "pending_payment",
   "confirmed",
   "upcoming",
@@ -91,4 +93,13 @@ export function sortByDate(items, field = "date") {
   return [...(items || [])].sort((a, b) =>
     String(b?.[field] || "").localeCompare(String(a?.[field] || "")),
   );
+}
+
+// Web bookings use `preferred_date`; older Flutter bookings use `date`.
+export function sortBookings(items) {
+  return [...(items || [])].sort((a, b) => {
+    const aKey = a?.date || a?.preferred_date || a?.createdAt || "";
+    const bKey = b?.date || b?.preferred_date || b?.createdAt || "";
+    return String(bKey).localeCompare(String(aKey));
+  });
 }

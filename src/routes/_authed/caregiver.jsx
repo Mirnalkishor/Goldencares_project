@@ -23,11 +23,14 @@ import BookingsTab from "@/components/caregiver/BookingsTab";
 import EarningsTab from "@/components/caregiver/EarningsTab";
 import ProfileTab from "@/components/caregiver/ProfileTab";
 import {
+  bookingDateValue,
+  bookingTime,
   formatBookingDate,
   formatLedgerDate,
   isPermissionError,
   paiseToInr,
-  sortByDate,
+  sortBookings,
+  UPCOMING_BOOKING_STATUSES,
 } from "@/components/caregiver/utils";
 
 export const Route = createFileRoute("/_authed/caregiver")({
@@ -49,15 +52,10 @@ const TABS = [
 async function loadAssignedBookings(uid) {
   async function byField(field) {
     try {
-      const page = await base44.entities.BookingRequest.filter(
-        { [field]: uid },
-        { sort: "-date", limit: 100 },
-      );
-      return page.items || [];
-    } catch {
-      // Named Firestore databases may not have the composite index yet.
       const page = await base44.entities.BookingRequest.filter({ [field]: uid }, { limit: 100 });
       return page.items || [];
+    } catch {
+      return [];
     }
   }
   const [byPersonnel, byCaregiver] = await Promise.all([
@@ -66,7 +64,9 @@ async function loadAssignedBookings(uid) {
   ]);
   const unique = new Map();
   for (const booking of [...byPersonnel, ...byCaregiver]) unique.set(booking.id, booking);
-  return sortByDate([...unique.values()]);
+  // Do not query/sort on `date`: web bookings use `preferred_date` and would be
+  // excluded by an orderBy on a field they do not have.
+  return sortBookings([...unique.values()]);
 }
 
 async function loadLedger(entityName, field, uid) {
@@ -147,12 +147,7 @@ function CaregiverPage() {
   }, [user.id, user.role, isCaregiver, reload]);
 
   const upcoming = useMemo(
-    () =>
-      (bookings || []).filter((booking) =>
-        ["pending_payment", "confirmed", "upcoming", "in_progress", "completion_requested"].includes(
-          booking.status,
-        ),
-      ),
+    () => (bookings || []).filter((booking) => UPCOMING_BOOKING_STATUSES.has(booking.status)),
     [bookings],
   );
   const completed = useMemo(
@@ -160,8 +155,11 @@ function CaregiverPage() {
     [bookings],
   );
   const nextVisit = useMemo(() => {
-    const withDates = upcoming.filter((booking) => booking.date);
-    return sortByDate(withDates).reverse()[0] || upcoming[0] || null;
+    const withDates = upcoming.filter((booking) => bookingDateValue(booking));
+    const soonest = [...withDates].sort((a, b) =>
+      String(bookingDateValue(a)).localeCompare(String(bookingDateValue(b))),
+    );
+    return soonest[0] || upcoming[0] || null;
   }, [upcoming]);
 
   if (!isCaregiver) {
@@ -397,7 +395,9 @@ function DashboardTab({
               <h3 className="font-heading text-[1.1rem] text-foreground">{nextVisit.serviceName || "Companion visit"}</h3>
               <StatusPill status={nextVisit.status} />
             </div>
-            <p className="mt-2 text-[0.86rem] text-muted-foreground">{formatBookingDate(nextVisit.date)} · {nextVisit.time || "Time to confirm"}</p>
+            <p className="mt-2 text-[0.86rem] text-muted-foreground">
+              {formatBookingDate(bookingDateValue(nextVisit))} · {bookingTime(nextVisit)}
+            </p>
             {nextVisit.userLocationAddress ? (
               <p className="mt-2 flex items-start gap-2 text-[0.84rem] text-muted-foreground">
                 <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> {nextVisit.userLocationAddress}
