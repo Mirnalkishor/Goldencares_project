@@ -13,6 +13,7 @@ import {
   PhoneCall,
   UserRound,
   Users,
+  XCircle,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { auth as getAuthClient } from "@/api/firebaseClient";
@@ -333,10 +334,53 @@ function SummaryCard({ label, value }) {
   );
 }
 
+const ACTIVE_BOOKING_STATUSES = new Set([
+  "new",
+  "contacted",
+  "pending_payment",
+  "scheduled",
+  "confirmed",
+  "upcoming",
+  "in_progress",
+  "completion_requested",
+]);
+
 function BookingsTab({ bookings, bookingCursor, loadingMore, loadMoreBookings, loadError, onChanged }) {
+  const [cancellingId, setCancellingId] = useState(null);
+  const [cancelError, setCancelError] = useState("");
+
+  async function cancelBooking(booking) {
+    const label = booking.request_type === "callback" ? "callback request" : "service";
+    if (!window.confirm(`Cancel this ${label} on ${formatDate(booking.preferred_date)}? This cannot be undone.`)) {
+      return;
+    }
+    setCancellingId(booking.id);
+    setCancelError("");
+    try {
+      await base44.functions.invoke("cancelBooking", { bookingId: booking.id });
+      onChanged?.();
+    } catch (error) {
+      setCancelError(
+        String(error?.message || error || "We could not cancel that booking.")
+          .replace(/\s*\[\d{3}\]\s*$/, ""),
+      );
+    } finally {
+      setCancellingId(null);
+    }
+  }
+
   return (
     <div className="mt-7">
       <h2 className="font-heading text-[1.5rem] text-foreground">Your requests</h2>
+
+      {cancelError ? (
+        <p
+          role="alert"
+          className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-[0.88rem] text-destructive"
+        >
+          {cancelError}
+        </p>
+      ) : null}
 
       {bookings === null ? (
         <div className="mt-5 space-y-3">
@@ -395,6 +439,22 @@ function BookingsTab({ bookings, bookingCursor, loadingMore, loadMoreBookings, l
 
                 {booking.notes ? (
                   <p className="mt-3 text-[0.85rem] leading-relaxed text-muted-foreground">{booking.notes}</p>
+                ) : null}
+
+                {ACTIVE_BOOKING_STATUSES.has(booking.status) ? (
+                  <button
+                    type="button"
+                    disabled={cancellingId === booking.id}
+                    onClick={() => cancelBooking(booking)}
+                    className="mt-4 inline-flex items-center gap-1.5 text-[0.84rem] font-semibold text-destructive hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <XCircle className="h-4 w-4" />
+                    {cancellingId === booking.id
+                      ? "Cancelling…"
+                      : booking.servicePersonnelId || booking.caregiverId
+                        ? "Cancel service"
+                        : "Cancel request"}
+                  </button>
                 ) : null}
 
                 <BookingJourneyPanel booking={booking} onChanged={onChanged} />

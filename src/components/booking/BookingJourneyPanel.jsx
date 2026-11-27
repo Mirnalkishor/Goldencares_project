@@ -60,8 +60,8 @@ export default function BookingJourneyPanel({ booking, onChanged }) {
 
   const status = booking?.status || "";
   const assigned = Boolean(booking?.servicePersonnelId || booking?.caregiverId);
-  const showStart = assigned && START_STATUSES.has(status);
-  const showCompletion = assigned && COMPLETE_STATUSES.has(status);
+  const showStartSection = assigned && START_STATUSES.has(status);
+  const showCompletionSection = assigned && COMPLETE_STATUSES.has(status);
   const showReview = status === "completed" && assigned;
   const bookingDate = bookingDateValue(booking);
   const visitDateLabel = formatBookingDate(bookingDate);
@@ -81,7 +81,7 @@ export default function BookingJourneyPanel({ booking, onChanged }) {
     if (status === "completed") setCompletionCode(null);
   }, [status]);
 
-  if (!showStart && !showCompletion && !showReview) return null;
+  if (!showStartSection && !showCompletionSection && !showReview) return null;
 
   async function generate(kind) {
     setBusy(kind);
@@ -103,8 +103,9 @@ export default function BookingJourneyPanel({ booking, onChanged }) {
         generateError,
         "We could not create that code. Please try again.",
       );
-      if (kind === "start" && /booking day|on the day/i.test(message)) {
-        setError(`Your arrival code will appear here on ${visitDateLabel}.`);
+      if (/booking day|on the day/i.test(message)) {
+        const label = kind === "start" ? "arrival" : "completion";
+        setError(`Your ${label} code will appear here on ${visitDateLabel}.`);
       } else {
         setError(message);
       }
@@ -155,7 +156,7 @@ export default function BookingJourneyPanel({ booking, onChanged }) {
       data-testid="booking-journey"
       className="mt-4 rounded-2xl border border-primary/20 bg-primary/5 p-4"
     >
-      {showStart ? (
+      {showStartSection ? (
         <div className="border-b border-primary/15 pb-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -195,7 +196,7 @@ export default function BookingJourneyPanel({ booking, onChanged }) {
                 onClick={() => generate("start")}
                 className="text-[0.78rem] font-semibold text-primary underline disabled:opacity-50"
               >
-                {busy === "start" ? "Regenerating…" : "Get a new code"}
+                {busy === "start" ? "Refreshing…" : "Show code again"}
               </button>
             </div>
           ) : startsToday ? (
@@ -225,8 +226,8 @@ export default function BookingJourneyPanel({ booking, onChanged }) {
         </div>
       ) : null}
 
-      {showCompletion ? (
-        <div className={showStart ? "pt-4" : ""}>
+      {showCompletionSection ? (
+        <div className={showStartSection ? "pt-4" : ""}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="inline-flex items-center gap-2 font-semibold text-foreground">
@@ -265,10 +266,10 @@ export default function BookingJourneyPanel({ booking, onChanged }) {
                 onClick={() => generate("completion")}
                 className="text-[0.78rem] font-semibold text-primary underline disabled:opacity-50"
               >
-                {busy === "completion" ? "Regenerating…" : "Get a new code"}
+                {busy === "completion" ? "Refreshing…" : "Show code again"}
               </button>
             </div>
-          ) : (
+          ) : startsToday ? (
             <button
               type="button"
               disabled={Boolean(busy)}
@@ -278,12 +279,25 @@ export default function BookingJourneyPanel({ booking, onChanged }) {
               {busy === "completion" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               Show completion code
             </button>
+          ) : (
+            <div
+              data-testid="completion-code-unavailable"
+              className="mt-3 rounded-xl border border-dashed border-border bg-card p-3.5"
+            >
+              <p className="text-[0.84rem] font-semibold text-foreground">
+                Completion code unlocks on your visit day
+              </p>
+              <p className="mt-1 text-[0.8rem] leading-relaxed text-muted-foreground">
+                We’ll show it here on {visitDateLabel}. Share it with {caregiverName(booking)} only
+                when the visit has finished.
+              </p>
+            </div>
           )}
         </div>
       ) : null}
 
       {showReview ? (
-        <div className={showStart || showCompletion ? "mt-4 border-t border-primary/15 pt-4" : ""}>
+        <div className={showStartSection || showCompletionSection ? "mt-4 border-t border-primary/15 pt-4" : ""}>
           {reviewDone || booking.reviewSubmitted ? (
             <div className="rounded-xl bg-card p-4">
               <p className="inline-flex items-center gap-2 font-semibold text-foreground">

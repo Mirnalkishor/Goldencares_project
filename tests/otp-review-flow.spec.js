@@ -41,7 +41,7 @@ test("family and caregiver complete the OTP journey, then the family reviews", a
     await expect(familyJourney).toBeVisible({ timeout: 20000 });
     await familyJourney.getByRole("button", { name: "Show arrival code" }).click();
     const arrivalCode = (await familyJourney.locator("[data-testid='arrival-code']").textContent()).trim();
-    expect(arrivalCode).toMatch(/^\d{6}$/);
+    expect(arrivalCode).toBe("728988");
 
     await login(caregiver, CAREGIVER_EMAIL, CAREGIVER_PASSWORD, /\/caregiver$/);
     await caregiver.getByRole("button", { name: "Bookings", exact: true }).click();
@@ -61,7 +61,7 @@ test("family and caregiver complete the OTP journey, then the family reviews", a
     const completionCode = (
       await completionJourney.locator("[data-testid='completion-code']").textContent()
     ).trim();
-    expect(completionCode).toMatch(/^\d{6}$/);
+    expect(completionCode).toBe("728988");
 
     await caregiver.reload();
     await caregiver.getByRole("button", { name: "Bookings", exact: true }).click();
