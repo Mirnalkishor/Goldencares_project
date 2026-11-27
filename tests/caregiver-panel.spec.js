@@ -52,3 +52,12 @@ test("family account cannot open the caregiver panel", async ({ page }) => {
   await page.goto("/caregiver");
   await expect(page.getByRole("heading", { name: "This page is for caregivers." })).toBeVisible();
 });
+
+test("future bookings explain when the arrival code will appear", async ({ page }) => {
+  await login(page, FAMILY_EMAIL, FAMILY_PASSWORD);
+  await page.getByRole("button", { name: "Bookings", exact: true }).click();
+
+  const upcomingCode = page.locator("[data-testid='arrival-code-unavailable']").first();
+  await expect(upcomingCode).toBeVisible({ timeout: 20000 });
+  await expect(upcomingCode).toContainText("Arrival code unlocks on your visit day");
+});

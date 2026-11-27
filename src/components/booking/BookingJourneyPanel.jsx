@@ -8,6 +8,12 @@ import {
   Star,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import {
+  bookingDateValue,
+  formatBookingDate,
+  istDateKey,
+  todayIstKey,
+} from "@/components/caregiver/utils";
 
 const START_STATUSES = new Set(["new", "confirmed", "upcoming", "scheduled"]);
 const COMPLETE_STATUSES = new Set(["in_progress", "completion_requested"]);
@@ -37,6 +43,11 @@ function Stars({ value }) {
   );
 }
 
+function friendlyError(error, fallback) {
+  const raw = String(error?.message || error || fallback);
+  return raw.replace(/\s*\[\d{3}\]\s*$/, "");
+}
+
 export default function BookingJourneyPanel({ booking, onChanged }) {
   const [startCode, setStartCode] = useState(null);
   const [completionCode, setCompletionCode] = useState(null);
@@ -52,6 +63,9 @@ export default function BookingJourneyPanel({ booking, onChanged }) {
   const showStart = assigned && START_STATUSES.has(status);
   const showCompletion = assigned && COMPLETE_STATUSES.has(status);
   const showReview = status === "completed" && assigned;
+  const bookingDate = bookingDateValue(booking);
+  const visitDateLabel = formatBookingDate(bookingDate);
+  const startsToday = Boolean(bookingDate) && istDateKey(bookingDate) === todayIstKey();
 
   useEffect(() => {
     setReviewDone(Boolean(booking?.reviewSubmitted));
@@ -85,7 +99,15 @@ export default function BookingJourneyPanel({ booking, onChanged }) {
         `${kind === "start" ? "Arrival" : "Completion"} code ready. Share it with ${caregiverName(booking)}.`,
       );
     } catch (generateError) {
-      setError(generateError?.message || "We could not create that code. Please try again.");
+      const message = friendlyError(
+        generateError,
+        "We could not create that code. Please try again.",
+      );
+      if (kind === "start" && /booking day|on the day/i.test(message)) {
+        setError(`Your arrival code will appear here on ${visitDateLabel}.`);
+      } else {
+        setError(message);
+      }
     } finally {
       setBusy("");
     }
@@ -122,7 +144,7 @@ export default function BookingJourneyPanel({ booking, onChanged }) {
       setNotice("Thanks — your rating and comment are now on your caregiver's profile.");
       onChanged?.();
     } catch (reviewError) {
-      setError(reviewError?.message || "We could not save your review. Please try again.");
+      setError(friendlyError(reviewError, "We could not save your review. Please try again."));
     } finally {
       setBusy("");
     }
@@ -176,7 +198,7 @@ export default function BookingJourneyPanel({ booking, onChanged }) {
                 {busy === "start" ? "Regenerating…" : "Get a new code"}
               </button>
             </div>
-          ) : (
+          ) : startsToday ? (
             <button
               type="button"
               disabled={Boolean(busy)}
@@ -186,6 +208,19 @@ export default function BookingJourneyPanel({ booking, onChanged }) {
               {busy === "start" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               Show arrival code
             </button>
+          ) : (
+            <div
+              data-testid="arrival-code-unavailable"
+              className="mt-3 rounded-xl border border-dashed border-border bg-card p-3.5"
+            >
+              <p className="text-[0.84rem] font-semibold text-foreground">
+                Arrival code unlocks on your visit day
+              </p>
+              <p className="mt-1 text-[0.8rem] leading-relaxed text-muted-foreground">
+                We’ll show it here on {visitDateLabel}. Share it with {caregiverName(booking)} when
+                they arrive.
+              </p>
+            </div>
           )}
         </div>
       ) : null}
