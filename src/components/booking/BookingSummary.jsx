@@ -17,8 +17,15 @@ export default function BookingSummary({ form, steps, current, onJump }) {
       step: 1,
     },
     {
-      label: "City",
+      label: "Address",
       value: form.city ? `${form.city}${form.address ? ` · ${form.address}` : ""}` : "Not chosen",
+      step: 2,
+    },
+    {
+      label: "Senior",
+      value: form.elderName
+        ? `${form.elderName}${form.elderAge ? ` · ${form.elderAge} yrs` : ""}`
+        : "Not added",
       step: 2,
     },
     {
@@ -26,7 +33,7 @@ export default function BookingSummary({ form, steps, current, onJump }) {
       value: `${formatDate(form.preferred_date)}${form.preferred_time ? ` · ${form.preferred_time}` : ""}`,
       step: 3,
     },
-    { label: "Contact", value: form.phone || "Not added", step: 4 },
+    { label: "Contact", value: form.phone || "Not added", step: 2 },
   ];
 
   return (

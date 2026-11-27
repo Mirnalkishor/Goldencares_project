@@ -78,6 +78,13 @@ export default function BookingConfirmed({ form, isAuthenticated, bookingId, pay
             </dd>
           </div>
           <div className="flex justify-between gap-4">
+            <dt className="text-muted-foreground">Senior</dt>
+            <dd className="text-right font-medium text-foreground">
+              {form.elderName || "—"}
+              {form.elderAge ? ` · ${form.elderAge} years` : ""}
+            </dd>
+          </div>
+          <div className="flex justify-between gap-4">
             <dt className="text-muted-foreground">When</dt>
             <dd className="text-right font-medium text-foreground">
               {formatDate(form.preferred_date)}

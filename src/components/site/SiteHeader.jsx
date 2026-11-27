@@ -96,40 +96,42 @@ export default function SiteHeader() {
           <Brand />
 
           <nav aria-label="Main" className="hidden items-center gap-1 lg:flex">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[0.93rem] font-medium text-foreground/75 transition-colors hover:bg-secondary hover:text-primary"
-                >
-                  Services <ChevronDown className="h-3.5 w-3.5" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-[19rem] rounded-2xl border-border bg-card p-2">
-                <DropdownMenuLabel className="px-2 pb-1 text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground">
-                  Eight ways we help
-                </DropdownMenuLabel>
-                {services.map((service) => {
-                  const Icon = service.icon;
-                  return (
-                    <DropdownMenuItem key={service.slug} asChild className="rounded-xl px-2 py-2">
-                      <Link to="/services/$slug" params={{ slug: service.slug }} className="flex items-center gap-3">
-                        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-secondary text-primary">
-                          <Icon className="h-4 w-4" />
-                        </span>
-                        <span className="text-[0.9rem] text-foreground">{service.name}</span>
-                      </Link>
-                    </DropdownMenuItem>
-                  );
-                })}
-                <DropdownMenuSeparator className="my-1.5" />
-                <DropdownMenuItem asChild className="rounded-xl px-2 py-2">
-                  <Link to="/services" className="flex items-center gap-2 text-[0.88rem] font-semibold text-primary">
-                    See all services <ArrowRight className="h-3.5 w-3.5" />
-                  </Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {isAuthenticated ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[0.93rem] font-medium text-foreground/75 transition-colors hover:bg-secondary hover:text-primary"
+                  >
+                    Services <ChevronDown className="h-3.5 w-3.5" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-[19rem] rounded-2xl border-border bg-card p-2">
+                  <DropdownMenuLabel className="px-2 pb-1 text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground">
+                    Eight ways we help
+                  </DropdownMenuLabel>
+                  {services.map((service) => {
+                    const Icon = service.icon;
+                    return (
+                      <DropdownMenuItem key={service.slug} asChild className="rounded-xl px-2 py-2">
+                        <Link to="/services/$slug" params={{ slug: service.slug }} className="flex items-center gap-3">
+                          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-secondary text-primary">
+                            <Icon className="h-4 w-4" />
+                          </span>
+                          <span className="text-[0.9rem] text-foreground">{service.name}</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    );
+                  })}
+                  <DropdownMenuSeparator className="my-1.5" />
+                  <DropdownMenuItem asChild className="rounded-xl px-2 py-2">
+                    <Link to="/services" className="flex items-center gap-2 text-[0.88rem] font-semibold text-primary">
+                      See all services <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : null}
 
             <Link
               to="/how-it-works"
@@ -180,16 +182,17 @@ export default function SiteHeader() {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild className="rounded-xl">
-                    <Link to="/account">My bookings</Link>
+                    {user?.role === "caregiver" ? (
+                      <Link to="/caregiver">Caregiver panel</Link>
+                    ) : (
+                      <Link to="/account">My bookings</Link>
+                    )}
                   </DropdownMenuItem>
                   {user?.role === "admin" ? (
                     <DropdownMenuItem asChild className="rounded-xl">
                       <Link to="/admin">Team view</Link>
                     </DropdownMenuItem>
                   ) : null}
-                  <DropdownMenuItem asChild className="rounded-xl">
-                    <Link to="/join">Become a caregiver</Link>
-                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={() => logout()} className="rounded-xl text-muted-foreground">
                     <LogOut className="mr-2 h-4 w-4" /> Sign out

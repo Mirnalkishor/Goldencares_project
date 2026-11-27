@@ -13,10 +13,16 @@
 // loop. `/oauth/consent` is a legitimate destination and is not in this set.
 const AUTH_PAGES = new Set(["/login", "/register", "/forgot-password", "/reset-password"]);
 
+// Signed-in users land on their account portal, not the public marketing home page.
+export const DEFAULT_AUTH_HOME = "/account";
+
 export function safeReturnTo(search) {
-  if (typeof window === "undefined") return "/";
+  if (typeof window === "undefined") return DEFAULT_AUTH_HOME;
   const params = new URLSearchParams(search ?? window.location.search);
-  return sanitizeReturnTo(params.get("returnTo") || params.get("from_url"));
+  const raw = params.get("returnTo") || params.get("from_url");
+  if (!raw) return DEFAULT_AUTH_HOME;
+  const sanitized = sanitizeReturnTo(raw);
+  return sanitized === "/" ? DEFAULT_AUTH_HOME : sanitized;
 }
 
 export function sanitizeReturnTo(raw) {

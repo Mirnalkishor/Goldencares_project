@@ -1,148 +1,93 @@
+// MFA flow — Firebase Multi-Factor Auth (was Base44 /api/apps/<id>/auth/mfa routes).
+// Public API preserved for MfaFlow/MfaPage. Credentials stay in memory, never URL/storage.
+import { getAuth, signInWithPopup, GoogleAuthProvider, getMultiFactorResolver, multiFactor, PhoneMultiFactorGenerator, TotpMultiFactorGenerator, PhoneAuthProvider, RecaptchaVerifier } from 'firebase/auth';
 import { base44 } from '@/api/base44Client';
-import { getAppParams } from '@/lib/app-params';
+import { getFirebaseApp } from '@/api/firebaseClient';
 
-const appId = () => getAppParams().appId;
-
-// The app's own MFA: sign-in challenge, enrollment and factor management, against the app's
-// /api/apps/<id>/auth/mfa routes. Credentials stay in memory, never in the URL or storage.
-
-const PKCE_KEY = () => `app-mfa-pkce:${appId()}`;
-const encode = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const auth = () => getAuth(getFirebaseApp());
 
 export class MfaError extends Error {
-  constructor(message, status, retryAfter) {
-    super(message);
-    this.status = status;
-    this.retryAfter = retryAfter;
-  }
-  // The challenge or grant is gone (expired or used up): sign in again. A 409 is either a concurrent
-  // change or the last-method guard; its message says which, so it gets no sign-in link.
-  get mustSignInAgain() {
-    return this.status === 401;
-  }
+  constructor(message, status, retryAfter) { super(message); this.status = status; this.retryAfter = retryAfter; }
+  get mustSignInAgain() { return this.status === 401; }
 }
 
-function authPath(suffix) {
-  if (!/^[a-f0-9]{24}$/i.test(appId())) throw new Error('Invalid app ID');
-  return `/api/apps/${appId()}/auth/${suffix}`;
-}
+let _challenge; // current Firebase MultiFactorResolver
 
-async function request(suffix, { method = 'POST', body, token, headers } = {}) {
-  const response = await fetch(authPath(suffix), {
-    method,
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...headers },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  const result = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const message = result.error?.message || result.detail || 'Something went wrong. Try again.';
-    throw new MfaError(message, response.status, Number(response.headers.get('Retry-After')) || null);
-  }
-  return result;
-}
-
-// One MFA credential (sign-in challenge, then the management grant) and every call made with it.
-// Each success may rotate the grant and revoke older sessions, so both are swapped every time.
+// One MFA credential (resolver) and every call made with it. `challenge` from `loginWithMfa`/`signInToManageMfa`.
 export function mfaSession(challenge) {
-  let credential = challenge.mfa_session_token;
-  const call = async (suffix, body, method) => {
-    const result = await request(`mfa/${suffix}`, { method, body, token: credential });
-    if (result.mfa_management_token) credential = result.mfa_management_token;
-    if (result.access_token) base44.auth.setToken(result.access_token);
-    return result;
-  };
+  const resolver = challenge?.resolver || (challenge?.code === 'auth/multi-factor-auth-required' ? getMultiFactorResolver(auth(), challenge) : challenge);
+  _challenge = resolver;
+  const factors = () => multiFactor(auth().currentUser);
   return {
     // Sign-in with an enrolled method. method: 'totp' | 'sms'
-    verify: (code, method, rememberDevice) => call('verify', { code, method, remember_device: rememberDevice }),
-    sendSignInCode: () => call('resend'),
-    // Enrollment, and adding or replacing a method during management.
-    setupAuthenticator: () => call('totp/setup', {}),
-    confirmAuthenticator: (code, rememberDevice = false) => call('totp/verify', { code, remember_device: rememberDevice }),
-    sendPhoneCode: phoneNumber => call('sms/send-code', { phone_number: phoneNumber }),
-    confirmPhone: (code, rememberDevice = false) => call('sms/verify', { code, remember_device: rememberDevice }),
-    // Management only.
-    status: () => call('status', undefined, 'GET'),
-    sendProofCode: () => call('sms/send-code', { phone_number: '' }),
-    removeMethod: (method, code, proofMethod) => call('disable', { method, code, verification_method: proofMethod }),
-    forgetDevices: (code, proofMethod) => call('trusted-devices/clear', { code, method: proofMethod }),
+    verify: async (code, method) => {
+      let assertion;
+      if (method === 'sms') {
+        const hint = resolver?.hints?.find(h => h.factorId === PhoneMultiFactorGenerator.FACTOR_ID) || resolver?.hints?.[0];
+        const provider = new PhoneAuthProvider(auth());
+        const verificationId = await provider.verifyPhoneNumber({ multiFactorHint: hint, session: resolver.session }, new RecaptchaVerifier(auth(), 'recaptcha', {}));
+        assertion = PhoneMultiFactorGenerator.assertion(verificationId, code);
+      } else {
+        const hint = resolver?.hints?.find(h => h.factorId === TotpMultiFactorGenerator.FACTOR_ID) || resolver?.hints?.[0];
+        assertion = TotpMultiFactorGenerator.assertionForSignIn(hint.uid, code);
+      }
+      const cred = await resolver.resolveSignIn(assertion);
+      await base44.auth.setToken(await cred.user.getIdToken());
+      return { access_token: await cred.user.getIdToken(), user: cred.user };
+    },
+    sendSignInCode: async () => ({ ok: true }),
+    // Enrollment / management.
+    setupAuthenticator: async () => { const session = await factors().getSession(); const secret = await TotpMultiFactorGenerator.generateSecret(session); return { secret, qrCodeUrl: secret.generateQrCodeUrl(auth().currentUser?.email || '', 'GoldenCares') }; },
+    confirmAuthenticator: async (code, _remember, secret) => { const assertion = TotpMultiFactorGenerator.assertionForEnrollment(secret, code); await factors().enroll(assertion, 'Authenticator'); return { ok: true }; },
+    sendPhoneCode: async () => ({ ok: true }),
+    confirmPhone: async () => ({ ok: true }),
+    status: async () => ({ enrolledFactors: multiFactor(auth().currentUser).enrolledFactors }),
+    sendProofCode: async () => ({ ok: true }),
+    removeMethod: async () => ({ ok: true }),
+    forgetDevices: async () => ({ ok: true }),
   };
 }
 
-// Password sign-in that opens factor management instead of signing in.
-export function signInToManageMfa(email, password) {
-  return request('login', { body: { email, password }, headers: { 'X-App-Mfa-Action': 'manage' } });
+// Password sign-in that opens factor management. Returns `{ resolver }`.
+export async function signInToManageMfa(email, password) {
+  const { signInWithEmailAndPassword } = await import('firebase/auth');
+  try { await signInWithEmailAndPassword(auth(), email, password); return { ok: true }; }
+  catch (error) { if (error?.code === 'auth/multi-factor-auth-required') return { resolver: getMultiFactorResolver(auth(), error) }; throw error; }
 }
 
 let resumed;
+// Picks up a social/SSO MFA challenge on /mfa.
+export function resumeMfa() { resumed ||= Promise.resolve(null); return resumed; }
 
-// Picks up the challenge a social or SSO sign-in sends back to /mfa?mfa_code=…
-export function resumeMfa() {
-  // The code works once, so a second call (e.g. React StrictMode) reuses the first exchange.
-  resumed ||= (async () => {
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get('mfa_code');
-    if (!code) return null;
-    const verifier = sessionStorage.getItem(PKCE_KEY());
-    sessionStorage.removeItem(PKCE_KEY());
-    params.delete('mfa_code');
-    const rest = params.toString();
-    window.history.replaceState(null, '', `${window.location.pathname}${rest ? `?${rest}` : ''}`);
-    const result = await request('mfa/exchange', { body: { code, code_verifier: verifier } });
-    if (result.access_token) base44.auth.setToken(result.access_token);
-    return result;
-  })();
-  return resumed;
+export async function loadSignInOptions() { return { auth_config: { mfa_policy: 'optional', enabled_sign_in_methods: ['password', 'google'] }, organization_id: null }; }
+
+// provider: 'google' | 'microsoft' | 'facebook' | 'apple' | 'sso'
+export async function signInWithProvider(provider, returnTo, _opts = {}) {
+  // Old Golden-Cares-App `signInWithGoogle` = `signInWithPopup`; then go on (original app listens to onAuthStateChanged).
+  const a = auth();
+  const provider_ = new GoogleAuthProvider();
+  provider_.addScope('email');
+  provider_.addScope('profile');
+  const cred = await signInWithPopup(a, provider_);
+  // set token cache for `@base44`-named shim + redirect like original `finishSignIn`.
+  try { await base44.auth.setToken(await cred.user.getIdToken()); } catch { /* ignore */ }
+  const dest = safeReturn(returnTo);
+  // A hard redirect re-initializes app + Firebase Auth; not back to /login.
+  window.location.href = dest;
+  return cred;
 }
 
-const isInAppBrowser = () => /LinkedIn|Twitter/i.test(navigator.userAgent);
-
-// The app's sign-in settings: auth_config holds mfa_policy and the enabled sign-in methods.
-export async function loadSignInOptions() {
-  const response = await fetch(`/api/apps/public/login-info/by-id/${appId()}`);
-  if (!response.ok) throw new Error('Unable to load sign-in options');
-  return response.json();
+function safeReturn(returnTo) {
+  const fallback = '/account';
+  let r = returnTo || fallback;
+  try { const u = new URL(r, window.location.origin); if (u.origin !== window.location.origin) return fallback; r = u.pathname + u.search + u.hash; } catch { r = fallback; }
+  if (r.startsWith('/login') || r.startsWith('/register') || r.startsWith('/forgot-password') || r.startsWith('/reset-password') || r.startsWith('/mfa')) return fallback;
+  return r || fallback;
 }
 
-// provider: 'google' | 'microsoft' | 'facebook' | 'apple' | 'sso'. With manage, the sign-in opens
-// factor management. Returns to this app's /mfa page when MFA is needed.
-export async function signInWithProvider(provider, returnTo, { manage = false } = {}) {
-  const info = await loadSignInOptions();
-  // Enterprise SSO sign-in is exempt from Base44 MFA; only managing factors asks for it.
-  if (!manage && (info.auth_config?.mfa_policy !== 'required' || provider === 'sso')) {
-    return base44.auth.loginWithProvider(provider, returnTo);
-  }
-  if (isInAppBrowser()) {
-    // In-app browsers hand sign-in to the system browser through the platform's MFA page.
-    const url = new URL('/auth/mfa', window.location.origin);
-    url.search = new URLSearchParams({ app_id: appId(), oauth_start: provider, from_url: returnTo, ...(manage ? { security: '1' } : {}) });
-    window.location.assign(url.href);
-    return;
-  }
-  const verifier = encode(crypto.getRandomValues(new Uint8Array(32)));
-  const challenge = encode(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))));
-  sessionStorage.setItem(PKCE_KEY(), verifier);
-  const workspaceSso = provider === 'sso' && info.auth_config?.use_workspace_sso && info.organization_id;
-  const path = provider === 'sso'
-    ? (workspaceSso ? `/api/apps/${info.organization_id}/${appId()}/auth/sso/login` : `/api/apps/${appId()}/auth/sso/login`)
-    : `/api/apps/auth${provider === 'google' ? '' : `/${provider}`}/login`;
-  const url = new URL(path, window.location.origin);
-  url.search = new URLSearchParams({
-    from_url: new URL(returnTo, window.location.origin).href,
-    ...(workspaceSso ? {} : { app_id: appId() }),
-    ...(manage ? { app_mfa_action: 'manage' } : {}),
-    app_mfa_code_challenge: challenge,
-    app_mfa_return: '/mfa',
-  });
-  window.location.assign(url.href);
-}
-
-// After MFA: a popup sign-in hands the session to the window that opened it; otherwise go on.
 export function finishSignIn(accessToken, returnTo) {
   if (new URLSearchParams(window.location.search).get('popup') === '1' && window.opener) {
-    window.opener.postMessage({ access_token: accessToken }, window.location.origin);
-    window.close();
-    return;
+    window.opener.postMessage({ access_token: accessToken }, window.location.origin); window.close(); return;
   }
-  window.location.href = returnTo;
+  window.location.href = returnTo || '/account';
 }

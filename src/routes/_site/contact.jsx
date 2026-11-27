@@ -83,7 +83,7 @@ function ContactPage() {
               <div className="rounded-[1.5rem] bg-primary p-6 text-primary-foreground">
                 <h2 className="font-heading text-[1.4rem] leading-tight">Prefer to book straight away?</h2>
                 <p className="mt-2 text-[0.9rem] leading-relaxed text-primary-foreground/75">
-                  Sign in or create an account to book in five short steps. We confirm everything by phone
+                  Sign in or create an account to book in four short steps. We confirm everything by phone
                   before the visit.
                 </p>
                 <Link

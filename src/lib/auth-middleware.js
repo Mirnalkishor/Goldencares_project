@@ -1,4 +1,4 @@
-import { createClientFromRequest, getAccessToken } from "@base44/sdk";
+import { base44, getAccessToken } from "@/api/base44Client";
 import { createMiddleware } from "@tanstack/react-start";
 import { getRequest, setResponseStatus } from "@tanstack/react-start/server";
 
@@ -9,7 +9,7 @@ import { getRequest, setResponseStatus } from "@tanstack/react-start/server";
 // visitor's Authorization header makes the client act as that visitor.
 const withGetBase44 = (next, request = getRequest()) => {
   let client;
-  return next({ context: { getBase44: () => (client ??= createClientFromRequest(request)) } });
+  return next({ context: { getBase44: () => (client ??= base44) } });
 };
 
 // Applied to every server function by src/start.js: sends the visitor's Base44
@@ -17,7 +17,7 @@ const withGetBase44 = (next, request = getRequest()) => {
 // access rules apply). Anonymous visitors send nothing and get an anonymous client.
 export const authMiddleware = createMiddleware({ type: "function" })
   .client(async ({ next }) => {
-    const token = typeof window === "undefined" ? null : getAccessToken();
+    const token = typeof window === "undefined" ? null : await getAccessToken();
     return next({ headers: token ? { Authorization: `Bearer ${token}` } : {} });
   })
   .server(({ next }) => withGetBase44(next));

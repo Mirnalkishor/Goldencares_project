@@ -16,6 +16,11 @@ export const authQuery = queryOptions({
   queryKey: ["auth", "me"],
   queryFn: async () => {
     if (isDevelopmentSession()) return { user: DEMO_USER, error: null };
+    // Firebase restores session ASYNCHRONOUSLY: wait for auth to settle before checking `currentUser`.
+    // (`hasToken()` synchronously returns `auth.currentUser`, which is `null` on first render.)
+    const authClient = (await import("@/api/firebaseClient")).auth();
+    try { await authClient.authStateReady(); } catch { /* ignore */ }
+    try { await (await import("firebase/auth")).getRedirectResult(authClient).catch(() => null); } catch { /* ignore */ }
     // No token means no session; /me could only answer 401.
     if (!base44.auth.hasToken()) return { user: null, error: null };
     try {

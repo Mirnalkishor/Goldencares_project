@@ -72,12 +72,21 @@ export default function MobileNav() {
 
             {isAuthenticated ? (
               <div className="grid grid-cols-2 gap-2 border-t border-border pt-4">
-                <Link
-                  to="/account"
-                  className="rounded-full border border-border px-4 py-3 text-center text-[0.85rem] font-semibold text-foreground"
-                >
-                  My bookings
-                </Link>
+                {user?.role === "caregiver" ? (
+                  <Link
+                    to="/caregiver"
+                    className="col-span-2 rounded-full bg-primary px-4 py-3 text-center text-[0.85rem] font-semibold text-primary-foreground"
+                  >
+                    Caregiver panel
+                  </Link>
+                ) : (
+                  <Link
+                    to="/account"
+                    className="rounded-full border border-border px-4 py-3 text-center text-[0.85rem] font-semibold text-foreground"
+                  >
+                    My bookings
+                  </Link>
+                )}
                 <button
                   type="button"
                   onClick={() => logout()}

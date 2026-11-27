@@ -6,7 +6,7 @@ const steps = [
   {
     icon: PhoneCall,
     title: "Tell us what you need",
-    text: "Sign in or create an account, then book in five short steps: service, hours, city, and how to reach you.",
+    text: "Sign in or create an account, then book in four short steps: service, hours, address, and timing.",
     meta: "Takes about 2 minutes",
   },
   {

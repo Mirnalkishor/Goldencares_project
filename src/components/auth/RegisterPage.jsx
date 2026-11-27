@@ -2,6 +2,7 @@ import { Lock, Mail, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
+import { signUpWithEmail } from "@/lib/authMfa";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { MfaFlow } from "@/components/auth/MfaFlow";
 import { MfaScreen } from "@/components/auth/MfaParts";
@@ -23,6 +24,7 @@ export function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [role, setRole] = useState("family");
   const [otpCode, setOtpCode] = useState("");
   const [step, setStep] = useState("form");
   const [error, setError] = useState("");
@@ -38,7 +40,25 @@ export function RegisterPage() {
     }
     setBusy(true);
     try {
-      await base44.auth.register({ email, password });
+      // Original Golden-Cares-App signUpWithEmail: createUserWithEmailAndPassword(email,password).
+      const cred = await signUpWithEmail(email, password);
+      // NEW: "Who am I?" role. Firebase Auth itself has no role; write `role` on `users`.
+      const { base44 } = await import("@/api/base44Client");
+      const uid = cred?.user?.uid || cred?.user?.id;
+      try {
+        await base44.entities.User.create({
+          id: uid || email,
+          email,
+          role, // 'family' | 'caregiver' (matches production Firestore rules)
+        });
+      } catch { /* users doc best-effort */ }
+      if (role === "caregiver") {
+        // Caregiver record in `servicePersonnel`. NOT auto-admin. (original `servicePersonnel`.)
+        try {
+          await base44.entities.CaregiverApplication.create({ email, role: "caregiver", status: "new" });
+        } catch { /* servicePersonnel best-effort */ }
+      }
+      // Firebase email-verification link sent; old app does NOT require OTP to sign in.
       setStep("otp");
     } catch (err) {
       setError(err.message || "Registration failed");
@@ -139,6 +159,19 @@ export function RegisterPage() {
             <Input id="register-email" type="email" autoComplete="email" autoFocus placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="h-12 pl-10" disabled={busy} required />
           </div>
         </div>
+        <fieldset className="space-y-2" disabled={busy}>
+          <legend className="text-sm font-medium">Who am I?</legend>
+          <div className="flex gap-4">
+            <label className="flex items-center gap-2">
+              <input type="radio" name="role" value="family" checked={role === "family"} onChange={() => setRole("family")} />
+              User
+            </label>
+            <label className="flex items-center gap-2">
+              <input type="radio" name="role" value="caregiver" checked={role === "caregiver"} onChange={() => setRole("caregiver")} />
+              Caregiver
+            </label>
+          </div>
+        </fieldset>
         <div className="space-y-2">
           <Label htmlFor="register-password">Password</Label>
           <div className="relative">

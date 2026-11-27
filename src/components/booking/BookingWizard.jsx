@@ -3,25 +3,55 @@ import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { serviceBySlug } from "@/lib/services";
 import { createPaymentToken, hashPaymentToken } from "@/lib/payu";
-import { CITIES } from "@/lib/site";
-import { isValidEmail, isValidPhoneNumber } from "@/lib/validation";
 import { ArrowLeft, ArrowRight, Loader2, Lock } from "lucide-react";
 import BookingProgress from "./BookingProgress";
 import BookingSummary from "./BookingSummary";
 import BookingConfirmed from "./BookingConfirmed";
 import StepService from "./steps/StepService";
 import StepDuration from "./steps/StepDuration";
-import StepLocation from "./steps/StepLocation";
+import StepAddress, { validateAddressDraft } from "./steps/StepAddress";
 import StepSchedule from "./steps/StepSchedule";
-import StepContact from "./steps/StepContact";
 
 const STEPS = [
   { key: "service", label: "Service" },
   { key: "duration", label: "Hours" },
-  { key: "location", label: "City" },
+  { key: "address", label: "Address" },
   { key: "schedule", label: "When" },
-  { key: "contact", label: "Contact" },
 ];
+
+const ADDRESS_FIELDS = [
+  "address_label",
+  "city",
+  "address",
+  "full_name",
+  "phone",
+  "email",
+  "relationship",
+  "language_preference",
+  "preferred_contact",
+  "notes",
+  "elderName",
+  "elderAge",
+];
+
+function formFromAddress(address) {
+  if (!address) return {};
+  return {
+    ...Object.fromEntries(ADDRESS_FIELDS.map((field) => [field, address[field] ?? ""])),
+    address_label: address.address_label || address.label || "",
+  };
+}
+
+function addressFromForm(form, id) {
+  const label = form.address_label || form.label || "";
+  return {
+    id,
+    ...Object.fromEntries(ADDRESS_FIELDS.map((field) => [field, form[field] ?? ""])),
+    address_label: label,
+    label,
+    updatedAt: new Date().toISOString(),
+  };
+}
 
 function emptyForm(initialService, initialDuration) {
   const service = serviceBySlug(initialService);
@@ -35,6 +65,7 @@ function emptyForm(initialService, initialDuration) {
   return {
     service_slug: service?.slug || "",
     duration_hours: duration,
+    address_label: "",
     city: "",
     address: "",
     preferred_date: "",
@@ -46,6 +77,8 @@ function emptyForm(initialService, initialDuration) {
     language_preference: "",
     preferred_contact: "Phone call",
     notes: "",
+    elderName: "",
+    elderAge: "",
   };
 }
 
@@ -56,17 +89,49 @@ export default function BookingWizard({ initialService, initialDuration }) {
   const [error, setError] = useState("");
   const [state, setState] = useState("idle");
   const [submitted, setSubmitted] = useState(false);
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [activeAddressId, setActiveAddressId] = useState(null);
+  const [accountName, setAccountName] = useState(user?.full_name || "");
   const topRef = useRef(null);
   const mounted = useRef(false);
 
   useEffect(() => {
-    if (!user) return;
-    setForm((prev) => ({
-      ...prev,
-      full_name: prev.full_name || user.full_name || "",
-      email: prev.email || user.email || "",
-    }));
-  }, [user]);
+    if (!user?.id) return;
+    let active = true;
+    base44.entities.User.get(user.id)
+      .then((doc) => {
+        if (!active) return;
+        const addresses = Array.isArray(doc?.savedAddresses) ? doc.savedAddresses : [];
+        const name = doc?.name || doc?.full_name || user.full_name || "";
+        setAccountName(name);
+        setSavedAddresses(addresses);
+        const preferred =
+          addresses.find((address) => address.id === doc?.lastUsedAddressId) || addresses[0] || null;
+        setActiveAddressId(preferred?.id || null);
+        setForm((prev) => {
+          const fromAddress = formFromAddress(preferred);
+          return {
+            ...prev,
+            ...fromAddress,
+            full_name: fromAddress.full_name || prev.full_name || name || user.full_name || "",
+            email: fromAddress.email || prev.email || user.email || "",
+            preferred_contact: fromAddress.preferred_contact || prev.preferred_contact || "Phone call",
+          };
+        });
+      })
+      .catch(() => {
+        if (!active) return;
+        setAccountName(user.full_name || "");
+        setForm((prev) => ({
+          ...prev,
+          full_name: prev.full_name || user.full_name || "",
+          email: prev.email || user.email || "",
+        }));
+      });
+    return () => {
+      active = false;
+    };
+  }, [user?.id, user?.full_name, user?.email]);
 
   useEffect(() => {
     if (!mounted.current) {
@@ -91,6 +156,62 @@ export default function BookingWizard({ initialService, initialDuration }) {
     setError("");
   };
 
+  function applyAddress(address) {
+    const fields = formFromAddress(address);
+    setForm((prev) => ({
+      ...prev,
+      ...fields,
+      full_name: fields.full_name || prev.full_name || user?.full_name || "",
+      email: fields.email || prev.email || user?.email || "",
+      preferred_contact: fields.preferred_contact || prev.preferred_contact || "Phone call",
+    }));
+  }
+
+  function selectAddress(address) {
+    if (user?.id) setActiveAddressId(address.id);
+    applyAddress(address);
+    setError("");
+    if (user?.id) {
+      base44.entities.User.update(user.id, { lastUsedAddressId: address.id }).catch(() => {});
+    }
+  }
+
+  async function saveAddress(draft, editingId) {
+    const id = editingId || `addr_${Date.now()}`;
+    const entry = addressFromForm(draft, id);
+    const next = editingId
+      ? savedAddresses.map((address) => (address.id === editingId ? entry : address))
+      : [...savedAddresses, entry];
+
+    if (user?.id) {
+      await base44.entities.User.update(user.id, { savedAddresses: next, lastUsedAddressId: id });
+      setSavedAddresses(next);
+    }
+
+    if (user?.id) setActiveAddressId(id);
+    applyAddress(entry);
+    setError("");
+    return entry;
+  }
+
+  async function deleteAddress(id) {
+    if (!user?.id || !window.confirm("Remove this saved address?")) return;
+    const next = savedAddresses.filter((address) => address.id !== id);
+    const patch = { savedAddresses: next };
+    if (activeAddressId === id) patch.lastUsedAddressId = next[0]?.id || "";
+    try {
+      await base44.entities.User.update(user.id, patch);
+      setSavedAddresses(next);
+      if (activeAddressId === id) {
+        const preferred = next[0] || null;
+        setActiveAddressId(preferred?.id || null);
+        setForm({ ...emptyForm(initialService, initialDuration), ...formFromAddress(preferred) });
+      }
+    } catch (err) {
+      setError(err?.message || "We could not remove that address. Please try again.");
+    }
+  }
+
   function validate(index) {
     if (index === 0 && !serviceBySlug(form.service_slug)) return "Please choose a service to continue.";
     if (
@@ -99,16 +220,7 @@ export default function BookingWizard({ initialService, initialDuration }) {
     ) {
       return "Please choose an available duration for this service.";
     }
-    if (index === 2 && !CITIES.includes(form.city)) return "Please choose a city so we can match someone nearby.";
-    if (index === 4) {
-      if (!form.full_name.trim()) return "Please add your name so we know who to speak with.";
-      if (!isValidPhoneNumber(form.phone)) {
-        return "Please enter a valid phone number.";
-      }
-      if (!isValidEmail(form.email)) {
-        return "Please enter a valid email address for your payment receipt.";
-      }
-    }
+    if (index === 2) return validateAddressDraft(form);
     return "";
   }
 
@@ -127,10 +239,13 @@ export default function BookingWizard({ initialService, initialDuration }) {
       handleNext();
       return;
     }
-    const message = validate(STEPS.length - 1);
-    if (message) {
-      setError(message);
-      return;
+    for (let index = 0; index < STEPS.length; index += 1) {
+      const message = validate(index);
+      if (message) {
+        setStep(index);
+        setError(message);
+        return;
+      }
     }
 
     setState("saving");
@@ -143,14 +258,23 @@ export default function BookingWizard({ initialService, initialDuration }) {
         request_type: "visit",
         service_name: service?.name || "Companion visit",
         duration_hours: Number(form.duration_hours),
+        userId: user.id,
+        paymentStatus: "pending_payment",
+        paymentId: "",
+        transactionId: "",
         city: form.city,
         address: form.address,
+        address_label: form.address_label,
         preferred_date: form.preferred_date,
         preferred_time: form.preferred_time,
         full_name: form.full_name,
         phone: form.phone,
         email: form.email,
+        elderName: form.elderName,
+        elderAge: Number(form.elderAge),
         relationship: form.relationship,
+        bookingMode: form.relationship === "I'm the senior" ? "self" : "other",
+        relationToRecipient: form.relationship || "other",
         language_preference: form.language_preference,
         preferred_contact: form.preferred_contact,
         notes: form.notes,
@@ -167,7 +291,10 @@ export default function BookingWizard({ initialService, initialDuration }) {
   }
 
   function reset() {
-    setForm(emptyForm(initialService, initialDuration));
+    const preferred =
+      savedAddresses.find((address) => address.id === activeAddressId) || savedAddresses[0] || null;
+    setForm({ ...emptyForm(initialService, initialDuration), ...formFromAddress(preferred) });
+    setActiveAddressId(preferred?.id || null);
     setStep(0);
     setSubmitted(false);
     setError("");
@@ -197,9 +324,20 @@ export default function BookingWizard({ initialService, initialDuration }) {
         <form onSubmit={handleSubmit} noValidate className="rounded-[2rem] border border-border bg-card p-5 sm:p-8">
           {step === 0 ? <StepService form={form} setField={setField} /> : null}
           {step === 1 ? <StepDuration form={form} setField={setField} /> : null}
-          {step === 2 ? <StepLocation form={form} setField={setField} /> : null}
+          {step === 2 ? (
+            <StepAddress
+              form={form}
+              savedAddresses={savedAddresses}
+              activeAddressId={activeAddressId}
+              onSelectAddress={selectAddress}
+              onDeleteAddress={deleteAddress}
+              onSaveAddress={saveAddress}
+              defaultName={accountName || user?.full_name || ""}
+              defaultEmail={user?.email || ""}
+              isAuthenticated={isAuthenticated}
+            />
+          ) : null}
           {step === 3 ? <StepSchedule form={form} setField={setField} /> : null}
-          {step === 4 ? <StepContact form={form} setField={setField} /> : null}
 
           {error ? (
             <p

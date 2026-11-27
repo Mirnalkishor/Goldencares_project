@@ -22,7 +22,7 @@ export const Route = createFileRoute("/_site/book")({
       {
         name: "description",
         content:
-          "Book companionship for your parent in five short steps: service, hours, city, timing and contact. We confirm every detail by phone before the visit.",
+          "Book companionship for your parent in four short steps: service, hours, address, and timing. We confirm every detail by phone before the visit.",
       },
     ],
   }),
@@ -46,7 +46,7 @@ function BookPage() {
             Book care in three minutes.
           </h1>
           <p className="mt-3 max-w-xl text-[1rem] leading-relaxed text-muted-foreground">
-            Sign in or create an account to request care in five short steps. The clear quote is ₹299 for one
+            Sign in or create an account to request care in four short steps. The clear quote is ₹299 for one
             hour, ₹399 for two, or ₹599 for three; pay securely with PayU if you choose.
           </p>
           <div className="mt-5 flex flex-wrap gap-4 text-[0.82rem] text-muted-foreground">
