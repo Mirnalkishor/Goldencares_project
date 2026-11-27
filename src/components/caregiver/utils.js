@@ -43,6 +43,33 @@ export function bookingTime(booking) {
   return booking?.time || booking?.preferred_time || "Time to confirm";
 }
 
+export function bookingDurationLabel(booking) {
+  const hours = Number(booking?.duration_hours);
+  if (Number.isFinite(hours) && hours > 0) {
+    return `${hours} hour${hours === 1 ? "" : "s"}`;
+  }
+  const raw = String(booking?.duration || "").trim();
+  if (!raw) return "";
+  return /^\d+$/.test(raw) ? `${raw} hour${raw === "1" ? "" : "s"}` : raw;
+}
+
+export function paymentMethodLabel(booking) {
+  if (booking?.payment_method === "cod") return "Cash on delivery";
+  if (booking?.payment_method === "online") return "Online payment";
+  return "—";
+}
+
+export function paymentStatusLabel(booking) {
+  const status = String(booking?.paymentStatus || "").trim();
+  const labels = {
+    cod: "Cash on delivery",
+    pending_payment: "Awaiting payment",
+    paid: "Paid",
+    refunded: "Refunded",
+  };
+  return labels[status] || status || "—";
+}
+
 export function bookingAddress(booking) {
   return booking?.userLocationAddress || booking?.address || booking?.city || "Address shared by the family";
 }

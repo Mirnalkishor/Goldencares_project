@@ -20,10 +20,13 @@ import {
 } from "lucide-react";
 import {
   bookingDateValue,
+  bookingDurationLabel,
   bookingServiceName,
   bookingTime,
   formatBookingDate,
   paiseToInr,
+  paymentMethodLabel,
+  paymentStatusLabel,
   UPCOMING_BOOKING_STATUSES,
 } from "./utils";
 
@@ -43,7 +46,7 @@ function inFilter(booking, filter) {
   return status === filter;
 }
 
-export default function BookingsTab({ bookings, onChanged }) {
+export default function BookingsTab({ bookings, personnel, onChanged }) {
   const [filter, setFilter] = useState("upcoming");
   const [selected, setSelected] = useState(null);
 
@@ -120,7 +123,7 @@ export default function BookingsTab({ bookings, onChanged }) {
                 <span className="inline-flex items-center gap-2">
                   <Clock3 className="h-4 w-4 text-primary" /> {bookingTime(booking)}
                 </span>
-                {booking.duration ? <span>{booking.duration}</span> : null}
+                {bookingDurationLabel(booking) ? <span>{bookingDurationLabel(booking)}</span> : null}
                 {booking.userLocationAddress ? (
                   <span className="inline-flex items-center gap-2">
                     <MapPin className="h-4 w-4 text-primary" /> {booking.userLocationAddress}
@@ -147,6 +150,7 @@ export default function BookingsTab({ bookings, onChanged }) {
 
       <BookingDetailDialog
         booking={selected}
+        personnel={personnel}
         onClose={() => setSelected(null)}
         onChanged={onChanged}
       />
@@ -154,7 +158,7 @@ export default function BookingsTab({ bookings, onChanged }) {
   );
 }
 
-function BookingDetailDialog({ booking, onClose, onChanged }) {
+function BookingDetailDialog({ booking, personnel, onClose, onChanged }) {
   const [contact, setContact] = useState(null);
   const [otp, setOtp] = useState("");
   const [busy, setBusy] = useState(false);
@@ -167,7 +171,7 @@ function BookingDetailDialog({ booking, onClose, onChanged }) {
     setMessage("");
     base44.functions
       .invoke("getCareRecipientContact", { bookingId: booking.id })
-      .then((result) => setContact(result || null))
+      .then((result) => setContact(result?.contact || null))
       .catch(() => setContact({ unavailable: true }));
   }, [booking?.id]);
 
@@ -203,7 +207,8 @@ function BookingDetailDialog({ booking, onClose, onChanged }) {
             <StatusPill status={booking.status} />
           </div>
           <DialogDescription>
-            {formatBookingDate(bookingDateValue(booking))} · {bookingTime(booking)} · {booking.duration || "Duration to confirm"}
+            {formatBookingDate(bookingDateValue(booking))} · {bookingTime(booking)} ·{" "}
+            {bookingDurationLabel(booking) || "Duration to confirm"}
           </DialogDescription>
         </DialogHeader>
 
@@ -216,6 +221,7 @@ function BookingDetailDialog({ booking, onClose, onChanged }) {
               <DetailRow label="Age" value={booking.elderAge ? `${booking.elderAge} years` : "—"} />
               <DetailRow label="Relation" value={booking.relationToRecipient || "—"} />
               <DetailRow label="Language" value={booking.language_preference || "—"} />
+              <DetailRow label="Preferred contact" value={booking.preferred_contact || "—"} />
             </dl>
           </section>
 
@@ -231,6 +237,13 @@ function BookingDetailDialog({ booking, onClose, onChanged }) {
             ) : null}
           </section>
         </div>
+
+        {booking.notes ? (
+          <section className="rounded-2xl border border-border p-4">
+            <h3 className="font-heading text-[1.05rem] text-foreground">Notes from the family</h3>
+            <p className="mt-2 text-[0.88rem] leading-relaxed text-muted-foreground">{booking.notes}</p>
+          </section>
+        ) : null}
 
         <section className="rounded-2xl border border-border p-4">
           <div className="flex items-center gap-2">
@@ -276,12 +289,34 @@ function BookingDetailDialog({ booking, onClose, onChanged }) {
 
         <section className="rounded-2xl border border-border p-4">
           <div className="flex items-center gap-2">
+            <PhoneCall className="h-4 w-4 text-primary" />
+            <h3 className="font-heading text-[1.05rem] text-foreground">Your contact number</h3>
+          </div>
+          {String(personnel?.phone || "").trim() ? (
+            <p className="mt-2 text-[0.88rem] text-muted-foreground">
+              {personnel.phone} — shared with the family when you take an order.
+            </p>
+          ) : (
+            <p className="mt-2 text-[0.88rem] text-muted-foreground">
+              Add your phone number in <strong>Profile &amp; Verification</strong> so the family can
+              call you about this visit.
+            </p>
+          )}
+        </section>
+
+        <section className="rounded-2xl border border-border p-4">
+          <div className="flex items-center gap-2">
             <ShieldCheck className="h-4 w-4 text-primary" />
             <h3 className="font-heading text-[1.05rem] text-foreground">Payment split</h3>
           </div>
-          <div className="mt-3 grid gap-2 text-[0.85rem] sm:grid-cols-3">
+          <div className="mt-3 grid gap-2 text-[0.85rem] sm:grid-cols-2">
             <DetailRow label="Visit price" value={booking.price != null ? paiseToInr(Number(booking.price) * 100) : "—"} />
-            <DetailRow label="Your payout" value={booking.caregiverEarningPaise != null ? paiseToInr(booking.caregiverEarningPaise) : "—"} />
+            <DetailRow label="Payment method" value={paymentMethodLabel(booking)} />
+            <DetailRow label="Payment status" value={paymentStatusLabel(booking)} />
+            <DetailRow
+              label="Your payout"
+              value={booking.caregiverEarningPaise != null ? paiseToInr(booking.caregiverEarningPaise) : "Confirmed after visit"}
+            />
             <DetailRow label="Transaction" value={booking.transactionId || "—"} />
           </div>
         </section>

@@ -328,7 +328,9 @@ function CaregiverPage() {
           onMarkAllRead={markAllRead}
         />
       ) : null}
-      {tab === "bookings" ? <BookingsTab bookings={bookings} onChanged={reloadData} /> : null}
+      {tab === "bookings" ? (
+        <BookingsTab bookings={bookings} personnel={personnel} onChanged={reloadData} />
+      ) : null}
       {tab === "orders" ? (
         <PickOrderTab
           onChanged={reloadData}

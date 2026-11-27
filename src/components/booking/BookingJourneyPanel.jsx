@@ -4,6 +4,7 @@ import {
   ClipboardCheck,
   Copy,
   Loader2,
+  PhoneCall,
   ShieldCheck,
   Star,
   UserRound,
@@ -93,6 +94,9 @@ export default function BookingJourneyPanel({ booking, onChanged }) {
 
   const status = booking?.status || "";
   const caregiverId = booking?.servicePersonnelId || booking?.caregiverId || "";
+  const caregiverPhone = String(
+    caregiverInfo?.phone || booking?.servicePersonnelPhone || booking?.caregiverPhone || "",
+  ).trim();
   const assigned = Boolean(caregiverId);
   const showStart = assigned && START_STATUSES.has(status);
   const showCompletion = assigned && COMPLETE_STATUSES.has(status);
@@ -231,18 +235,31 @@ export default function BookingJourneyPanel({ booking, onChanged }) {
               </span>
             ) : null}
           </div>
+          {caregiverPhone ? (
+            <a
+              href={`tel:${caregiverPhone}`}
+              className="mt-2 inline-flex items-center gap-2 text-[0.85rem] font-medium text-primary hover:underline"
+            >
+              <PhoneCall className="h-4 w-4" /> {caregiverPhone}
+            </a>
+          ) : (
+            <p className="mt-2 text-[0.82rem] text-muted-foreground">
+              Your caregiver’s phone will appear here once they add it to their profile.
+            </p>
+          )}
           {caregiverId && caregiverInfo === null ? (
             <p className="mt-2 flex items-center gap-2 text-[0.84rem] text-muted-foreground">
               <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading caregiver details…
             </p>
           ) : (() => {
+            const languages = commaList(caregiverInfo?.languages || []);
             const details = [
               caregiverInfo?.age ? `Age ${caregiverInfo.age}` : "",
               caregiverInfo?.gender || "",
               caregiverInfo?.experienceYears
                 ? `${caregiverInfo.experienceYears} years experience`
                 : "",
-              caregiverInfo?.languages ? `Languages: ${commaList(caregiverInfo.languages)}` : "",
+              languages ? `Languages: ${languages}` : "",
               caregiverInfo?.city || "",
             ].filter(Boolean);
             if (!details.length && !caregiverInfo?.bio) {
