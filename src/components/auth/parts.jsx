@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GoogleIcon } from "./GoogleIcon";
-import { signInWithProvider } from "@/lib/authMfaFlow";
+import { signInWithProvider, signUpWithProvider } from "@/lib/authMfaFlow";
 import { returnToSearch } from "@/lib/authReturnTo";
 
 // Small pieces the auth pages share.
@@ -31,13 +31,21 @@ export function SubmitButton({ busy, busyLabel, children, ...props }) {
   );
 }
 
-export function GoogleButton({ returnTo, onError }) {
+export function GoogleButton({ returnTo, onError, role }) {
+  // On the signup page a role has already been chosen; Google must create the
+  // matching profile instead of just signing in with no role attached.
+  const onClick = () => {
+    const flow = role
+      ? signUpWithProvider("google", role, returnTo)
+      : signInWithProvider("google", returnTo);
+    flow.catch((err) => onError(err.message || "Unable to continue with Google"));
+  };
   return (
     <Button
       type="button"
       variant="outline"
       className="mb-6 h-12 w-full text-sm font-medium"
-      onClick={() => signInWithProvider("google", returnTo).catch((err) => onError(err.message || "Unable to sign in with Google"))}
+      onClick={onClick}
     >
       <GoogleIcon className="mr-2 h-5 w-5" />
       Continue with Google

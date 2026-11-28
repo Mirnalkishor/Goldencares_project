@@ -1,8 +1,9 @@
 // MFA flow — Firebase Multi-Factor Auth (was Base44 /api/apps/<id>/auth/mfa routes).
 // Public API preserved for MfaFlow/MfaPage. Credentials stay in memory, never URL/storage.
 import { getAuth, signInWithPopup, GoogleAuthProvider, getMultiFactorResolver, multiFactor, PhoneMultiFactorGenerator, TotpMultiFactorGenerator, PhoneAuthProvider, RecaptchaVerifier } from 'firebase/auth';
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { base44 } from '@/api/base44Client';
-import { getFirebaseApp } from '@/api/firebaseClient';
+import { getFirebaseApp, getDb } from '@/api/firebaseClient';
 
 const auth = () => getAuth(getFirebaseApp());
 
@@ -74,6 +75,74 @@ export async function signInWithProvider(provider, returnTo, _opts = {}) {
   const dest = safeReturn(returnTo);
   // A hard redirect re-initializes app + Firebase Auth; not back to /login.
   window.location.href = dest;
+  return cred;
+}
+
+// Google signup needs the role up front: the provider gives us an identity but
+// no indication of whether the person wants a family or caregiver account.
+// RegisterPage asks before opening the popup and passes that choice here.
+export async function signUpWithProvider(provider, role, returnTo, _opts = {}) {
+  if (provider !== 'google') throw new Error('Unsupported sign-up provider');
+  const chosenRole = role === 'caregiver' ? 'caregiver' : 'family';
+  const a = auth();
+  const provider_ = new GoogleAuthProvider();
+  provider_.addScope('email');
+  provider_.addScope('profile');
+  const cred = await signInWithPopup(a, provider_);
+  const user = cred.user;
+  const uid = user.uid;
+  const email = String(user.email || '').trim().toLowerCase();
+  const name = user.displayName || email;
+  const db = getDb();
+  const userRef = doc(db, 'users', uid);
+  const existing = await getDoc(userRef);
+
+  if (!existing.exists()) {
+    const emailVerified = user.emailVerified === true;
+    const now = Date.now();
+    await setDoc(userRef, {
+      uid,
+      email,
+      name,
+      role: chosenRole,
+      phone: '',
+      activation: {
+        emailVerified,
+        phoneVerified: false,
+        complete: false,
+        startedAt: now,
+        ...(emailVerified ? { emailVerifiedAt: now } : {}),
+      },
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      created_date: serverTimestamp(),
+      updated_date: serverTimestamp(),
+      ...(chosenRole === 'caregiver' ? { kyc: { status: 'not_started' } } : {}),
+    });
+    if (chosenRole === 'caregiver') {
+      await setDoc(doc(db, 'servicePersonnel', uid), {
+        id: uid,
+        email,
+        name,
+        phone: '',
+        role: 'caregiver',
+        status: 'new',
+        kyc: { status: 'not_started' },
+        isActive: true,
+        isAvailable: false,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+    }
+  } else if (!existing.data()?.role) {
+    // Existing Google identity with an unprofiled document: adopt the selected
+    // role. Never overwrite a role that is already set.
+    await updateDoc(userRef, { role: chosenRole, updatedAt: serverTimestamp() });
+  }
+
+  try { await base44.auth.setToken(await user.getIdToken()); } catch { /* ignore */ }
+  const dest = safeReturn(returnTo);
+  window.location.href = `/activate?returnTo=${encodeURIComponent(dest)}`;
   return cred;
 }
 
