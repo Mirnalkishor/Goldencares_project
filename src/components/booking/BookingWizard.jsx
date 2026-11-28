@@ -233,6 +233,7 @@ export default function BookingWizard({ initialService, initialDuration }) {
       return "Please choose an available duration for this service.";
     }
     if (index === 2) return validateAddressDraft(form);
+    if (index === 3 && !form.preferred_time) return "Please choose a preferred time to continue.";
     if (index === 4 && !isPaymentMethodAvailable(form.payment_method)) {
       return COD_ENABLED
         ? "Choose how you’d like to pay: online or cash on delivery."

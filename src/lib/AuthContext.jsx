@@ -55,14 +55,22 @@ export function AuthProvider({ children }) {
       isLoadingAuth: isPending,
       authError: data?.error ?? (error ? { type: "unknown", message: error.message ?? "Failed to load session" } : null),
       refresh: () => queryClient.fetchQuery({ ...authQuery, staleTime: 0 }),
-      logout: () => {
+      // Family and caregiver sessions always end on the public home page,
+      // never on a member-only screen after the token has been cleared.
+      logout: async () => {
         queryClient.setQueryData(authQuery.queryKey, { user: null, error: null });
         if (isDevelopmentSession()) {
           window.localStorage.removeItem(DEV_AUTH_STORAGE_KEY);
-          window.location.assign("/login");
+          window.location.assign("/");
           return;
         }
-        base44.auth.logout(window.location.origin);
+        try {
+          await base44.auth.logout();
+        } catch {
+          // Even if Firebase sign-out fails, do not strand the user behind a
+          // stale client-only session — the hard navigation reloads auth state.
+        }
+        window.location.assign("/");
       },
       // Full-page sign-in: /login with the current page as the way back. A hard
       // navigation on purpose — on an app served behind the platform login the

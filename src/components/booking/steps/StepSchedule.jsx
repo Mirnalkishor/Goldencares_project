@@ -1,7 +1,6 @@
 import ChoiceCard from "../ChoiceCard";
 
 const SLOTS = [
-  { value: "", title: "Any time", description: "We suggest a time when we call." },
   { value: "Morning (8–11 am)", title: "Morning", description: "8 am – 11 am, good for walks and temples." },
   { value: "Afternoon (12–4 pm)", title: "Afternoon", description: "12 pm – 4 pm, good for clinics and errands." },
   { value: "Evening (4–8 pm)", title: "Evening", description: "4 pm – 8 pm, good for parks and company." },
