@@ -1,6 +1,5 @@
-// Base44 managed file: error-capture v1. Keep it as it is, and keep it as `main` in wrangler.jsonc; Base44
-// replaces it with newer versions. The Worker's entry: TanStack Start's default one, which also reports a
-// page's loader and beforeLoad errors to Base44. What a visitor gets back is unchanged.
+// TanStack Start server entry (auto-detected by the Start Vite plugin). Nitro wraps this fetch handler in a
+// real Node HTTP server for Firebase App Hosting. It also reports a page's loader and beforeLoad errors.
 import { createStartHandler, defaultStreamHandler } from "@tanstack/react-start/server";
 import { recordRouteError } from "@/lib/error-capture.server";
 

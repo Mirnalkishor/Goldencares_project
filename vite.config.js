@@ -1,10 +1,10 @@
 import { readFileSync } from "node:fs";
-import { cloudflare } from "@cloudflare/vite-plugin";
+import { nitroV2Plugin } from "@tanstack/nitro-v2-vite-plugin";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
-// Every runtime dependency is bundled at startup, for the browser and the SSR worker: one first imported
+// Every runtime dependency is bundled at startup, for the browser and the SSR server: one first imported
 // mid-session makes Vite re-bundle, and a page rendered meanwhile on the server loads a second React.
 // Not listed: React itself, the TanStack Start/Router framework (its plugin bundles it) and build-time plugins.
 const NOT_PREBUNDLED = new Set(["react", "react-dom", "@tanstack/react-start", "@tanstack/react-router", "@tanstack/react-router-ssr-query", "tailwindcss-animate", "firebase", "firebase-admin"]);
@@ -21,23 +21,24 @@ const BROWSER_PREBUNDLE = [
   "@tanstack/router-core/scroll-restoration-script", "@tanstack/history", "@tanstack/start-fn-stubs",
   "seroval", "seroval-plugins/web", "cookie-es",
 ];
+// App Hosting injects FIREBASE_WEBAPP_CONFIG into the build environment. Use its public apiKey so a
+// GitHub build needs no .env file and no secret; local .env values still win when present.
+let appHostingApiKey;
+try {
+  appHostingApiKey = JSON.parse(process.env.FIREBASE_WEBAPP_CONFIG ?? "{}").apiKey;
+} catch {
+  appHostingApiKey = undefined;
+}
 
 export default defineConfig({
+  define: appHostingApiKey ? { "import.meta.env.VITE_FIREBASE_API_KEY": JSON.stringify(appHostingApiKey) } : {},
   resolve: { alias: { "@": new URL("./src", import.meta.url).pathname } },
   optimizeDeps: { include: [...PREBUNDLE, ...BROWSER_PREBUNDLE] },
-  environments: {
-    ssr: {
-      optimizeDeps: { include: PREBUNDLE },
-      // Source maps for the Worker only, never served: they let Base44 point an error's stack at the app's own
-      // files. Without the sources, so the app's code isn't copied into them. The browser build gets none.
-      build: { sourcemap: true, rolldownOptions: { output: { sourcemapExcludeSources: true } } },
-    },
-  },
   plugins: [
-    // Firebase backend (was @base44/vite-plugin); no Base44 plugin.
-    // No inspector: a restarted dev server would race the old one for port 9229 and crash.
-    cloudflare({ viteEnvironment: { name: "ssr" }, inspectorPort: false }),
     tanstackStart({ srcDirectory: "src" }),
+    // Real Node HTTP server for Firebase App Hosting (and any other Node host).
+    // Stable Nitro 2 compatibility plugin; TanStack Start >=1.132 no longer bundles Nitro by default.
+    nitroV2Plugin({ preset: "firebase_app_hosting" }),
     react(),
   ],
 });

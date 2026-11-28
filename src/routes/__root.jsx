@@ -1,8 +1,10 @@
-import { HeadContent, Outlet, Scripts, createRootRoute } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { HeadContent, Outlet, Scripts, createRootRoute, useRouterState } from "@tanstack/react-router";
 import { DefaultCatchBoundary } from "@/components/DefaultCatchBoundary";
 import { NotFound } from "@/components/NotFound";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/lib/AuthContext";
+import { claritySnippet, trackPageView } from "@/lib/analytics";
 import appCss from "@/index.css?url";
 
 const FAVICON = "/images/goldencares-emblem.png";
@@ -47,6 +49,12 @@ export const Route = createRootRoute({
 });
 
 function RootComponent() {
+  // SPA navigations don't reload the document, so GA4 needs a page_view per route change.
+  const href = useRouterState({ select: (state) => state.location.href });
+  useEffect(() => {
+    trackPageView(href);
+  }, [href]);
+
   return (
     <AuthProvider>
       <Outlet />
@@ -61,6 +69,7 @@ function RootDocument({ children }) {
     <html lang="en">
       <head>
         <HeadContent />
+        <script dangerouslySetInnerHTML={{ __html: claritySnippet() }} />
       </head>
       <body data-react-root="true">
         {children}
