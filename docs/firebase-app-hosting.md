@@ -7,14 +7,15 @@ The web app is now built for **Node on Firebase App Hosting** in the same Fireba
 - Backend: `goldencares-web`, region `asia-southeast1`, Node.js 22.
 - URL: https://goldencares-web--golden-care-d4863.asia-southeast1.hosted.app
 - Successful rollout/build: `build-2026-11-28-001` (CLI local-source deploy; commit `084e508`).
-- `goldencares.in` was **not** repointed — the live site is still the old Cloudflare one. Current DNS: A `104.21.60.238`, `172.67.202.138`; AAAA `2606:4700:3030::ac43:ca8a`, `2606:4700:3037::6815:3cee`.
-- Firebase Auth: Phone sign-in was already enabled; authorized domains were extended with the hosted.app URL and `www.goldencares.in` (all 9 previous domains preserved).
+- Custom domains `goldencares.in` and `www.goldencares.in` are connected to `goldencares-web` (HOST_ACTIVE / OWNERSHIP_ACTIVE / CERT_ACTIVE). Both return HTTP 200 and serve this TanStack app.
+- DNS now has unproxied A `35.219.201.42` on the apex and `www`, matching `fah-claim` TXT records `00b-02-ea0fdbd6-4d08-4055-9dde-dcb7eb3b3e5a` and `00b-02-b18fcd04-8993-43cc-afc5-e223434cdb89`, plus the shared ACME CNAME `_acme-challenge_6m5myh6aqk7vp2ch.goldencares.in` → `31bd18a0-09b2-480c-85f8-fb73917aef26.10.authorize.certificatemanager.goog.`.
+- Firebase Auth: Phone sign-in was already enabled; authorized domains include the hosted.app URL and both custom domains. Sign-in was verified from `https://goldencares.in/` and `https://www.goldencares.in/`.
 - Backend callables and rules deployed from `Golden-Cares-App` `fb9a6a7`: activation (3), KYC (5), payment (3), booking feed/pick (2), `cleanupExpiredPayments`, plus Firestore and Storage rules/indexes.
 - Local re-deploy command: `firebase deploy --only apphosting --project golden-care-d4863 --force` (uses `firebase.json` + `apphosting.yaml` in this directory).
 
 ### Rollback
 
-- **Web**: App Hosting keeps the 5 most recent successful builds/rollouts regardless of age (plus 14 days of builds). Use Firebase console → App Hosting → `goldencares-web` → Rollouts → *Roll back* on an earlier build. If the custom domain was switched, restore the Cloudflare DNS records above to return to the old site.
+- **Web**: App Hosting keeps the 5 most recent successful builds/rollouts regardless of age (plus 14 days of builds). Use Firebase console → App Hosting → `goldencares-web` → Rollouts → *Roll back* on an earlier build. To return the domain to the old Cloudflare site, replace the apex A record with `199.36.158.100` (proxied) and the `www` A record with a CNAME to `golden-care-landing.web.app` (proxied), then remove the `fah-claim` TXT records and ACME CNAME. The old public Anycast addresses were A `104.21.60.238`, `172.67.202.138` and AAAA `2606:4700:3030::ac43:ca8a`, `2606:4700:3037::6815:3cee`.
 - **Backend**: the previous function code is the parent of `55b976e` in the backend repo. Redeploy that commit with the same `firebase deploy --only functions:...` filter, or restore rules/functions from git before redeploying.
 - Nothing on Cloudflare or the old Flutter/Firebase Hosting sites was deleted.
 
