@@ -4,7 +4,6 @@ import { doc, onSnapshot } from "firebase/firestore";
 import { getDb } from "@/api/firebaseClient";
 import { useAdmin } from "@/lib/AdminAuthContext";
 import { AdminBadge, AdminButton } from "@/components/admin/AdminUI";
-import AdminIdleOxygen from "@/components/admin/AdminIdleOxygen";
 
 const NAV_ITEMS = [
   { to: "/admin/dashboard", label: "Dashboard" },
@@ -91,7 +90,6 @@ export default function AdminShell({ children }) {
         </nav>
       </header>
       <main>{children}</main>
-      <AdminIdleOxygen />
     </div>
   );
 }
