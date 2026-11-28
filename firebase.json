@@ -1,0 +1,17 @@
+{
+  "apphosting": {
+    "backendId": "goldencares-web",
+    "rootDir": ".",
+    "ignore": [
+      "node_modules",
+      ".git",
+      "dist",
+      ".output",
+      ".nitro",
+      ".apphosting",
+      ".tanstack",
+      "test-results",
+      "playwright-report"
+    ]
+  }
+}

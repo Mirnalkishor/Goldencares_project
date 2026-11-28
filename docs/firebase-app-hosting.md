@@ -1,6 +1,22 @@
 # Firebase App Hosting runbook (TanStack Start)
 
-The web app is now built for **Node on Firebase App Hosting** in the same Firebase project as the backend (`golden-care-d4863`). Cloudflare Worker config is gone.
+The web app is now built for **Node on Firebase App Hosting** in the same Firebase project as the backend (`golden-care-d4863`). Cloudflare Worker config is gone from the repository, but the old Cloudflare-hosted site at `goldencares.in` was **left running and untouched** as the rollback target.
+
+## Deployed state (2026-11-28)
+
+- Backend: `goldencares-web`, region `asia-southeast1`, Node.js 22.
+- URL: https://goldencares-web--golden-care-d4863.asia-southeast1.hosted.app
+- Successful rollout/build: `build-2026-11-28-001` (CLI local-source deploy; commit `084e508`).
+- `goldencares.in` was **not** repointed — the live site is still the old Cloudflare one. Current DNS: A `104.21.60.238`, `172.67.202.138`; AAAA `2606:4700:3030::ac43:ca8a`, `2606:4700:3037::6815:3cee`.
+- Firebase Auth: Phone sign-in was already enabled; authorized domains were extended with the hosted.app URL and `www.goldencares.in` (all 9 previous domains preserved).
+- Backend callables and rules deployed from `Golden-Cares-App` `fb9a6a7`: activation (3), KYC (5), payment (3), booking feed/pick (2), `cleanupExpiredPayments`, plus Firestore and Storage rules/indexes.
+- Local re-deploy command: `firebase deploy --only apphosting --project golden-care-d4863 --force` (uses `firebase.json` + `apphosting.yaml` in this directory).
+
+### Rollback
+
+- **Web**: App Hosting keeps the 5 most recent successful builds/rollouts regardless of age (plus 14 days of builds). Use Firebase console → App Hosting → `goldencares-web` → Rollouts → *Roll back* on an earlier build. If the custom domain was switched, restore the Cloudflare DNS records above to return to the old site.
+- **Backend**: the previous function code is the parent of `55b976e` in the backend repo. Redeploy that commit with the same `firebase deploy --only functions:...` filter, or restore rules/functions from git before redeploying.
+- Nothing on Cloudflare or the old Flutter/Firebase Hosting sites was deleted.
 
 ## What changed in the repo
 
